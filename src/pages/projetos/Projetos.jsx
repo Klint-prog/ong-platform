@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { FolderKanban, Plus, Target, Users, Clock, CheckCircle2, AlertCircle, PauseCircle, FileText } from 'lucide-react'
 
 const PROJETOS = [
@@ -109,7 +109,7 @@ export default function Projetos() {
           const pctTarefas = p.tarefas.total ? Math.round((p.tarefas.concluidas / p.tarefas.total) * 100) : 0
 
           return (
-            <div key={p.id} className="card" style={{ cursor: 'pointer', transition: 'transform var(--transition), box-shadow var(--transition)', display: 'flex', flexDirection: 'column', gap: 16 }}
+            <Link to={`/projetos/${p.id}`} key={p.id} className="card" style={{ cursor: 'pointer', transition: 'transform var(--transition), box-shadow var(--transition)', display: 'flex', flexDirection: 'column', gap: 16, textDecoration: 'none' }}
               onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = 'var(--shadow-md)' }}
               onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = '' }}>
 
@@ -168,10 +168,12 @@ export default function Projetos() {
                   <Clock size={12} /> {p.inicio} → {p.fim}
                 </span>
               </div>
-            </div>
+            </Link>
           )
         })}
       </div>
     </div>
   )
 }
+
+export { PROJETOS, statusConfig, fmt }
