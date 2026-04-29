@@ -1,0 +1,52 @@
+# ─────────────────────────────────────────────────────────
+#  ONG Platform — Docker Compose
+#  Containers: frontend (Nginx) + db (PostgreSQL)
+#  Uso: docker compose up -d --build
+# ─────────────────────────────────────────────────────────
+
+services:
+
+  # ── 1. Frontend (React + Nginx) ───────────────────────
+  frontend:
+    build:
+      context: .
+      target: prod
+    container_name: ong-frontend
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-8977}:80"
+    networks:
+      - ong_net
+    # Não depende do db — é um SPA estático servido pelo Nginx
+
+  # ── 2. Banco de dados (PostgreSQL) ────────────────────
+  db:
+    image: postgres:16-alpine
+    container_name: ong-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB:       ${DB_NAME:-ong_platform}
+      POSTGRES_USER:     ${DB_USER:-ong}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-ong123}
+    ports:
+      - "${POSTGRES_PORT:-5433}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-ong} -d ${DB_NAME:-ong_platform}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - ong_net
+
+# ── Volumes ────────────────────────────────────────────
+volumes:
+  postgres_data:
+    driver: local
+
+# ── Rede interna ───────────────────────────────────────
+networks:
+  ong_net:
+    driver: bridge

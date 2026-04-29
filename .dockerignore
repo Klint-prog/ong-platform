@@ -1,0 +1,27 @@
+# ── Dependências instaladas (o Docker instala do zero) ────
+node_modules/
+
+# ── Build anterior (o Docker gera um novo) ────────────────
+dist/
+
+# ── Ambiente local (nunca vai para o container) ───────────
+.env
+.env.local
+.env.*.local
+
+# ── Logs ──────────────────────────────────────────────────
+*.log
+npm-debug.log*
+
+# ── Sistema e IDE ─────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# ── Git ───────────────────────────────────────────────────
+.git/
+.gitignore
+
+# ── Screenshots (não precisa no container) ────────────────
+screenshots/
