@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Heart, Plus, Search, Filter, Phone, Mail, MoreHorizontal, Users, UserCheck, Handshake, Gift } from 'lucide-react'
 
 const PESSOAS = [
@@ -27,6 +28,7 @@ const STATS = [
 export default function Pessoas() {
   const [busca, setBusca] = useState('')
   const [tipoFiltro, setTipoFiltro] = useState('TODOS')
+  const navigate = useNavigate()
 
   const filtradas = PESSOAS.filter(p => {
     const matchBusca = p.nome.toLowerCase().includes(busca.toLowerCase()) || p.email.includes(busca)
@@ -41,7 +43,7 @@ export default function Pessoas() {
           <h1 className="page-title">Pessoas</h1>
           <p className="page-subtitle">Gerencie membros, voluntários, beneficiários e doadores</p>
         </div>
-        <button className="btn btn-primary">
+        <button className="btn btn-primary" onClick={() => navigate('/pessoas/nova')}>
           <Plus size={16} /> Nova pessoa
         </button>
       </div>
