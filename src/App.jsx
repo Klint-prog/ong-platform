@@ -5,6 +5,7 @@ import Dashboard from './pages/dashboard/Dashboard'
 import Pessoas from './pages/pessoas/Pessoas'
 import Financeiro from './pages/financeiro/Financeiro'
 import Projetos from './pages/projetos/Projetos'
+import ProjetoDetalhe from './pages/projetos/ProjetoDetalhe'
 import Comunicacao from './pages/comunicacao/Comunicacao'
 import Usuarios from './pages/usuarios/Usuarios'
 import Login from './pages/auth/Login'
@@ -54,6 +55,7 @@ function AppShell({ user, onLogout }) {
           <Route path="/financeiro"    element={<Financeiro />} />
           <Route path="/financeiro/nova" element={<NovaTransacaoPage />} />
           <Route path="/projetos"      element={<Projetos />} />
+          <Route path="/projetos/:id"  element={<ProjetoDetalhe />} />
           <Route path="/projetos/novo" element={<NovoProjetoPage />} />
           <Route path="/comunicacao"   element={<Comunicacao />} />
           <Route path="/comunicacao/novo" element={<NovoEnvioPage />} />
