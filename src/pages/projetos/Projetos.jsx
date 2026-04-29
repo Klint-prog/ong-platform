@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { FolderKanban, Plus, Target, Users, Clock, CheckCircle2, AlertCircle, PauseCircle, FileText } from 'lucide-react'
 
 const PROJETOS = [
@@ -51,6 +52,7 @@ const fmt = v => `R$ ${v.toLocaleString('pt-BR')}`
 
 export default function Projetos() {
   const [filtro, setFiltro] = useState('TODOS')
+  const navigate = useNavigate()
 
   const filtrados = PROJETOS.filter(p => filtro === 'TODOS' || p.status === filtro)
 
@@ -61,7 +63,7 @@ export default function Projetos() {
           <h1 className="page-title">Projetos</h1>
           <p className="page-subtitle">Gerencie projetos, tarefas e indicadores de impacto</p>
         </div>
-        <button className="btn btn-primary">
+        <button className="btn btn-primary" onClick={() => navigate('/projetos/novo')}>
           <Plus size={16} /> Novo projeto
         </button>
       </div>
