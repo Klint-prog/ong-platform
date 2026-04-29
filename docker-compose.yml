@@ -1,0 +1,33 @@
+services:
+  frontend:
+    build:
+      context: .
+      target: prod
+    container_name: ong-frontend
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "${FRONTEND_PORT:-8977}:80"
+    restart: unless-stopped
+
+  db:
+    image: postgres:16-alpine
+    container_name: ong-postgres
+    environment:
+      POSTGRES_DB: ong_platform
+      POSTGRES_USER: ong
+      POSTGRES_PASSWORD: ong123
+    ports:
+      - "${POSTGRES_PORT:-5433}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ong -d ong_platform"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
