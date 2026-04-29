@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Bell, Mail, FileText, Plus, Send, CheckCheck, Clock, AlertCircle, Info, Eye } from 'lucide-react'
 
 const NOTIFICACOES = [
@@ -30,6 +31,7 @@ const tipoNotif = {
 }
 
 export default function Comunicacao() {
+  const navigate = useNavigate()
   const [aba, setAba] = useState('notificacoes')
 
   return (
@@ -39,7 +41,7 @@ export default function Comunicacao() {
           <h1 className="page-title">Comunicação</h1>
           <p className="page-subtitle">Notificações, e-mails e templates da plataforma</p>
         </div>
-        <button className="btn btn-primary">
+        <button className="btn btn-primary" onClick={() => navigate('/comunicacao/novo')}>
           <Plus size={16} /> Novo envio
         </button>
       </div>

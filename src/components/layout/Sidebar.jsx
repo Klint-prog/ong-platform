@@ -29,7 +29,7 @@ const NAV = [
   },
 ]
 
-export default function Sidebar({ user }) {
+export default function Sidebar({ user, onLogout }) {
   return (
     <aside className="app-sidebar">
       {/* Logo */}
@@ -82,6 +82,7 @@ export default function Sidebar({ user }) {
           className="btn btn-ghost btn-icon"
           style={{ color: 'rgba(255,255,255,.35)', padding: 6 }}
           title="Sair"
+          onClick={onLogout}
         >
           <LogOut size={15} />
         </button>

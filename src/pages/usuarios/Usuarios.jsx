@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Users, Plus, Shield, UserCog, Eye, MoreHorizontal, CheckCircle, XCircle } from 'lucide-react'
 
 const USUARIOS = [
@@ -18,6 +19,7 @@ const roleConfig = {
 }
 
 export default function Usuarios() {
+  const navigate = useNavigate()
   const [filtro, setFiltro] = useState('TODOS')
 
   const filtrados = USUARIOS.filter(u => filtro === 'TODOS' || u.role === filtro)
@@ -29,7 +31,7 @@ export default function Usuarios() {
           <h1 className="page-title">Usuários</h1>
           <p className="page-subtitle">Gerencie contas e permissões de acesso à plataforma</p>
         </div>
-        <button className="btn btn-primary">
+        <button className="btn btn-primary" onClick={() => navigate('/usuarios/novo')}>
           <Plus size={16} /> Novo usuário
         </button>
       </div>
