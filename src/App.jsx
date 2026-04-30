@@ -9,6 +9,7 @@ import ProjetoDetalhe from './pages/projetos/ProjetoDetalhe'
 import Comunicacao from './pages/comunicacao/Comunicacao'
 import Usuarios from './pages/usuarios/Usuarios'
 import Login from './pages/auth/Login'
+import NotasPaulista from './pages/notas/NotasPaulista'
 import { NovaPessoaPage, NovaTransacaoPage, NovoProjetoPage, NovoEnvioPage } from './pages/cadastros/Cadastros'
 import { Search, Bell, Settings } from 'lucide-react'
 
@@ -60,6 +61,7 @@ function AppShell({ user, onLogout }) {
           <Route path="/comunicacao"   element={<Comunicacao />} />
           <Route path="/comunicacao/novo" element={<NovoEnvioPage />} />
           <Route path="/usuarios"      element={<Usuarios />} />
+          <Route path="/notas-paulista" element={<NotasPaulista />} />
           <Route path="/configuracoes" element={<div className="card"><h2 style={{ fontFamily: 'var(--font-display)' }}>Configurações</h2><p style={{ color: 'var(--gray-400)', marginTop: 8 }}>Em breve.</p></div>} />
           <Route path="*"              element={<Navigate to="/" replace />} />
         </Routes>
