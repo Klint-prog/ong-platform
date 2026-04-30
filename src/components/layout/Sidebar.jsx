@@ -1,7 +1,7 @@
 import { NavLink, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard, Users, Heart, DollarSign,
-  FolderKanban, Bell, Settings, LogOut, Leaf
+  FolderKanban, Bell, Settings, LogOut, Leaf, ScanLine
 } from 'lucide-react'
 
 const NAV = [
@@ -18,6 +18,7 @@ const NAV = [
       { to: '/financeiro',  label: 'Financeiro',   icon: DollarSign,      mod: 'mod-financeiro' },
       { to: '/projetos',    label: 'Projetos',     icon: FolderKanban,    mod: 'mod-projetos' },
       { to: '/comunicacao', label: 'Comunicação',  icon: Bell,            mod: 'mod-comunicacao' },
+      { to: '/notas-paulista', label: 'Notas Paulista', icon: ScanLine,   mod: 'mod-financeiro' },
     ],
   },
   {
