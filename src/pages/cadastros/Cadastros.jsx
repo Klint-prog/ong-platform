@@ -1,14 +1,42 @@
+import { useMemo } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
 import CadastroEntity from './CadastroEntity'
+import { findPessoaById, upsertPessoa } from '../pessoas/pessoasStorage'
+
+const CAMPOS_PESSOA = [
+  { name: 'nome', label: 'Nome completo', placeholder: 'Ex.: Maria da Silva' },
+  { name: 'email', label: 'E-mail', type: 'email', placeholder: 'nome@email.com' },
+  { name: 'telefone', label: 'Telefone', placeholder: '(81) 99999-9999' },
+  { name: 'tipo', label: 'Tipo', placeholder: 'VOLUNTARIO / BENEFICIARIO / MEMBRO / DOADOR' },
+]
 
 export function NovaPessoaPage() {
+  const navigate = useNavigate()
+
   return (
     <CadastroEntity titulo="Nova pessoa" subtitulo="Cadastre membros, voluntários, beneficiários ou doadores" cor="var(--pink-500)"
-      campos={[
-        { name: 'nome', label: 'Nome completo', placeholder: 'Ex.: Maria da Silva' },
-        { name: 'email', label: 'E-mail', type: 'email', placeholder: 'nome@email.com' },
-        { name: 'telefone', label: 'Telefone', placeholder: '(81) 99999-9999' },
-        { name: 'tipo', label: 'Tipo', placeholder: 'VOLUNTARIO / BENEFICIARIO / MEMBRO / DOADOR' },
-      ]}
+      campos={CAMPOS_PESSOA}
+      onSave={(form) => {
+        upsertPessoa(form)
+        navigate('/pessoas')
+      }}
+    />
+  )
+}
+
+export function EditarPessoaPage() {
+  const navigate = useNavigate()
+  const { id } = useParams()
+  const pessoa = useMemo(() => findPessoaById(id), [id])
+
+  return (
+    <CadastroEntity titulo="Editar pessoa" subtitulo="Atualize os dados da pessoa cadastrada" cor="var(--pink-500)"
+      campos={CAMPOS_PESSOA}
+      initialValues={pessoa}
+      onSave={(form) => {
+        upsertPessoa(form, id)
+        navigate('/pessoas')
+      }}
     />
   )
 }
@@ -26,19 +54,7 @@ export function NovaTransacaoPage() {
   )
 }
 
-export function NovoProjetoPage() {
-  return (
-    <CadastroEntity titulo="Novo projeto" subtitulo="Crie um projeto com metas, período e orçamento" cor="var(--yellow-500)"
-      campos={[
-        { name: 'nome', label: 'Nome do projeto', placeholder: 'Ex.: Horta Solidária' },
-        { name: 'inicio', label: 'Data de início', type: 'date' },
-        { name: 'fim', label: 'Data de fim', type: 'date' },
-        { name: 'orcamento', label: 'Orçamento (R$)', type: 'number', placeholder: '10000' },
-        { name: 'descricao', label: 'Descrição', type: 'textarea', placeholder: 'Descreva os objetivos do projeto...' },
-      ]}
-    />
-  )
-}
+export function NovoProjetoPage() { return null }
 
 export function NovoEnvioPage() {
   return (
@@ -51,7 +67,6 @@ export function NovoEnvioPage() {
     />
   )
 }
-
 
 export function EditarInstitucionalPage() {
   return (
