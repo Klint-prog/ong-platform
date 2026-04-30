@@ -9,9 +9,14 @@ const documentos = [
 ]
 
 const diretoria = [
-  { cargo: 'Presidência', nome: 'Eliel Gomes da Silva' },
-  { cargo: 'Diretoria de Operações', nome: 'Jhonatas Mendes' },
-  { cargo: 'Conselho fiscal', nome: '3 membros cadastrados' },
+  { cargo: 'Presidente', nome: 'Eliel Gomes da Silva' },
+  { cargo: 'Vice-presidente', nome: 'A definir' },
+  { cargo: 'Diretor de Operações', nome: 'Jhonatas Mendes' },
+  { cargo: 'Vice-diretor de Operações', nome: 'A definir' },
+  { cargo: 'Secretária', nome: 'A definir' },
+  { cargo: 'Diretor Financeiro', nome: 'A definir' },
+  { cargo: 'Vice-diretor Financeiro', nome: 'A definir' },
+  { cargo: 'Conselheiros', nome: '3 membros cadastrados' },
 ]
 
 export default function Institucional() {
@@ -30,7 +35,7 @@ export default function Institucional() {
       <div className="grid-4" style={{ marginBottom: 24 }}>
         <div className="stat-card mod-institucional"><div className="stat-icon"><Building2 size={20} /></div><div><div className="stat-label">CNPJ</div><div className="stat-value" style={{ fontSize: 20 }}>07.779.623</div></div></div>
         <div className="stat-card mod-documentos"><div className="stat-icon"><FileCheck2 size={20} /></div><div><div className="stat-label">Documentos</div><div className="stat-value">18</div></div></div>
-        <div className="stat-card mod-beneficiarios"><div className="stat-icon"><Users size={20} /></div><div><div className="stat-label">Diretoria</div><div className="stat-value">7</div></div></div>
+        <div className="stat-card mod-beneficiarios"><div className="stat-icon"><Users size={20} /></div><div><div className="stat-label">Diretoria</div><div className="stat-value">10</div></div></div>
         <div className="stat-card mod-captacao"><div className="stat-icon"><ShieldCheck size={20} /></div><div><div className="stat-label">Conformidade</div><div className="stat-value">92%</div></div></div>
       </div>
 
