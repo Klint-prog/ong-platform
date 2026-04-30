@@ -1,4 +1,5 @@
 import { Building2, FileCheck2, ShieldCheck, Users, MapPin } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 
 const documentos = [
   { nome: 'Estatuto social', status: 'Atualizado', vencimento: 'Sem vencimento', badge: 'badge-green' },
@@ -14,6 +15,8 @@ const diretoria = [
 ]
 
 export default function Institucional() {
+  const navigate = useNavigate()
+
   return (
     <div className="mod-institucional animate-fade-in">
       <div className="page-header">
@@ -21,7 +24,7 @@ export default function Institucional() {
           <h1 className="page-title">Institucional</h1>
           <p className="page-subtitle">Dados oficiais da ONG, diretoria, certidões e identidade institucional</p>
         </div>
-        <button className="btn btn-primary"><Building2 size={16} /> Editar cadastro</button>
+        <button className="btn btn-primary" onClick={() => navigate('/institucional/editar')}><Building2 size={16} /> Editar cadastro</button>
       </div>
 
       <div className="grid-4" style={{ marginBottom: 24 }}>

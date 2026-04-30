@@ -51,3 +51,19 @@ export function NovoEnvioPage() {
     />
   )
 }
+
+
+export function EditarInstitucionalPage() {
+  return (
+    <CadastroEntity titulo="Editar cadastro institucional" subtitulo="Atualize os dados oficiais da ONG" cor="var(--purple-500)"
+      campos={[
+        { name: 'nome', label: 'Nome da organização', placeholder: 'Associação...' },
+        { name: 'cnpj', label: 'CNPJ', placeholder: '00.000.000/0000-00' },
+        { name: 'atuacao', label: 'Área de atuação', placeholder: 'Desenvolvimento rural...' },
+        { name: 'endereco', label: 'Endereço', placeholder: 'Cidade - UF' },
+        { name: 'missao', label: 'Missão', type: 'textarea', placeholder: 'Descreva a missão da ONG...' },
+        { name: 'visao', label: 'Visão', type: 'textarea', placeholder: 'Descreva a visão da ONG...' },
+      ]}
+    />
+  )
+}
