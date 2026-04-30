@@ -10,6 +10,11 @@ import Comunicacao from './pages/comunicacao/Comunicacao'
 import Usuarios from './pages/usuarios/Usuarios'
 import Login from './pages/auth/Login'
 import NotasPaulista from './pages/notas/NotasPaulista'
+import Institucional from './pages/institucional/Institucional'
+import Beneficiarios from './pages/beneficiarios/Beneficiarios'
+import Documentos from './pages/documentos/Documentos'
+import Captacao from './pages/captacao/Captacao'
+import Relatorios from './pages/relatorios/Relatorios'
 import { NovaPessoaPage, NovaTransacaoPage, NovoProjetoPage, NovoEnvioPage } from './pages/cadastros/Cadastros'
 import { Search, Bell, Settings } from 'lucide-react'
 
@@ -22,7 +27,7 @@ function AppShell({ user, onLogout }) {
       <header className="app-topbar">
         <div style={{ flex: 1, position: 'relative', maxWidth: 380 }}>
           <Search size={15} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--gray-400)' }} />
-          <input placeholder="Buscar…" style={{ paddingLeft: 38, background: 'var(--gray-50)', border: '1.5px solid var(--gray-100)', fontSize: 13 }} />
+          <input placeholder="Buscar projeto, beneficiário, documento…" style={{ paddingLeft: 38, background: 'var(--gray-50)', border: '1.5px solid var(--gray-100)', fontSize: 13 }} />
         </div>
 
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -51,13 +56,18 @@ function AppShell({ user, onLogout }) {
       <main className="app-main">
         <Routes>
           <Route path="/"              element={<Dashboard />} />
+          <Route path="/institucional" element={<Institucional />} />
           <Route path="/pessoas"       element={<Pessoas />} />
           <Route path="/pessoas/nova"  element={<NovaPessoaPage />} />
+          <Route path="/beneficiarios" element={<Beneficiarios />} />
           <Route path="/financeiro"    element={<Financeiro />} />
           <Route path="/financeiro/nova" element={<NovaTransacaoPage />} />
           <Route path="/projetos"      element={<Projetos />} />
           <Route path="/projetos/:id"  element={<ProjetoDetalhe />} />
           <Route path="/projetos/novo" element={<NovoProjetoPage />} />
+          <Route path="/documentos"    element={<Documentos />} />
+          <Route path="/captacao"      element={<Captacao />} />
+          <Route path="/relatorios"    element={<Relatorios />} />
           <Route path="/comunicacao"   element={<Comunicacao />} />
           <Route path="/comunicacao/novo" element={<NovoEnvioPage />} />
           <Route path="/usuarios"      element={<Usuarios />} />
