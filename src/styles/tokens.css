@@ -1,20 +1,16 @@
 /* ================================================================
    ONG Platform — Design System
-   Paleta: verde, amarelo, lilás, rosa, vermelho, roxo, azul
-   Cada módulo tem sua própria cor identidade.
+   Paleta por módulo para gestão social, projetos, documentos e prestação de contas
    ================================================================ */
 
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Syne:wght@700;800&display=swap');
 
-/* ── Fontes ──────────────────────────────────────────────────── */
 :root {
   --font-display: 'Syne', sans-serif;
   --font-body: 'Plus Jakarta Sans', sans-serif;
 }
 
-/* ── Paleta completa ─────────────────────────────────────────── */
 :root {
-  /* Verde — Financeiro */
   --green-50:  #f0fdf4;
   --green-100: #dcfce7;
   --green-200: #bbf7d0;
@@ -24,7 +20,6 @@
   --green-700: #15803d;
   --green-900: #14532d;
 
-  /* Amarelo — Projetos */
   --yellow-50:  #fefce8;
   --yellow-100: #fef9c3;
   --yellow-200: #fef08a;
@@ -34,7 +29,6 @@
   --yellow-700: #a16207;
   --yellow-900: #713f12;
 
-  /* Lilás — Comunicação */
   --lilac-50:  #faf5ff;
   --lilac-100: #f3e8ff;
   --lilac-200: #e9d5ff;
@@ -44,7 +38,6 @@
   --lilac-700: #7e22ce;
   --lilac-900: #3b0764;
 
-  /* Rosa — Pessoas */
   --pink-50:  #fdf2f8;
   --pink-100: #fce7f3;
   --pink-200: #fbcfe8;
@@ -54,7 +47,6 @@
   --pink-700: #be185d;
   --pink-900: #500724;
 
-  /* Vermelho — Alertas / Urgente */
   --red-50:  #fff1f2;
   --red-100: #ffe4e6;
   --red-200: #fecdd3;
@@ -64,7 +56,6 @@
   --red-700: #b91c1c;
   --red-900: #450a0a;
 
-  /* Roxo — Usuários / Admin */
   --purple-50:  #f5f3ff;
   --purple-100: #ede9fe;
   --purple-200: #ddd6fe;
@@ -74,7 +65,6 @@
   --purple-700: #6d28d9;
   --purple-900: #2e1065;
 
-  /* Azul — Dashboard / Info */
   --blue-50:  #eff6ff;
   --blue-100: #dbeafe;
   --blue-200: #bfdbfe;
@@ -84,7 +74,21 @@
   --blue-700: #1d4ed8;
   --blue-900: #1e3a8a;
 
-  /* ── Tons neutros ─────────────────────────────────────────── */
+  --cyan-50: #ecfeff;
+  --cyan-100: #cffafe;
+  --cyan-500: #06b6d4;
+  --cyan-700: #0e7490;
+
+  --orange-50: #fff7ed;
+  --orange-100: #ffedd5;
+  --orange-500: #f97316;
+  --orange-700: #c2410c;
+
+  --slate-50: #f8fafc;
+  --slate-100: #f1f5f9;
+  --slate-500: #64748b;
+  --slate-700: #334155;
+
   --gray-0:   #ffffff;
   --gray-50:  #f8f7f5;
   --gray-100: #f0efe9;
@@ -97,16 +101,20 @@
   --gray-800: #272521;
   --gray-900: #17160f;
 
-  /* ── Módulos: cor identidade ──────────────────────────────── */
-  --mod-dashboard:   var(--blue-500);
-  --mod-pessoas:     var(--pink-500);
-  --mod-financeiro:  var(--green-500);
-  --mod-projetos:    var(--yellow-500);
-  --mod-comunicacao: var(--lilac-500);
-  --mod-usuarios:    var(--purple-500);
+  --mod-dashboard:     var(--blue-500);
+  --mod-institucional: var(--slate-500);
+  --mod-pessoas:       var(--pink-500);
+  --mod-beneficiarios: var(--cyan-500);
+  --mod-financeiro:    var(--green-500);
+  --mod-projetos:      var(--yellow-500);
+  --mod-documentos:    var(--orange-500);
+  --mod-captacao:      var(--purple-500);
+  --mod-relatorios:    var(--blue-600);
+  --mod-comunicacao:   var(--lilac-500);
+  --mod-usuarios:      var(--purple-500);
+  --mod-alertas:       var(--red-500);
 
-  /* ── Layout ───────────────────────────────────────────────── */
-  --sidebar-w: 260px;
+  --sidebar-w: 270px;
   --topbar-h:  64px;
   --radius-sm: 8px;
   --radius-md: 12px;
@@ -114,37 +122,38 @@
   --radius-xl: 24px;
   --radius-full: 9999px;
 
-  /* ── Sombras ──────────────────────────────────────────────── */
   --shadow-sm: 0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
   --shadow-md: 0 4px 12px rgba(0,0,0,.08), 0 2px 4px rgba(0,0,0,.04);
   --shadow-lg: 0 12px 32px rgba(0,0,0,.10), 0 4px 8px rgba(0,0,0,.06);
 
-  /* ── Transições ───────────────────────────────────────────── */
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --transition: 180ms var(--ease-out);
 }
 
-/* ── Reset & base ─────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 html { font-size: 16px; -webkit-font-smoothing: antialiased; }
 
 body {
   font-family: var(--font-body);
-  background: var(--gray-50);
+  background: radial-gradient(circle at top left, rgba(34, 197, 94, .08), transparent 28%), var(--gray-50);
   color: var(--gray-800);
   line-height: 1.6;
 }
 
-/* ── Utilitários de cor de módulo ─────────────────────────────── */
-.mod-dashboard  { --mod-color: var(--blue-500);   --mod-light: var(--blue-50);   --mod-dark: var(--blue-700); }
-.mod-pessoas    { --mod-color: var(--pink-500);   --mod-light: var(--pink-50);   --mod-dark: var(--pink-700); }
-.mod-financeiro { --mod-color: var(--green-500);  --mod-light: var(--green-50);  --mod-dark: var(--green-700); }
-.mod-projetos   { --mod-color: var(--yellow-500); --mod-light: var(--yellow-50); --mod-dark: var(--yellow-700); }
-.mod-comunicacao{ --mod-color: var(--lilac-500);  --mod-light: var(--lilac-50);  --mod-dark: var(--lilac-700); }
-.mod-usuarios   { --mod-color: var(--purple-500); --mod-light: var(--purple-50); --mod-dark: var(--purple-700); }
+.mod-dashboard     { --mod-color: var(--blue-500);   --mod-light: var(--blue-50);   --mod-dark: var(--blue-700); }
+.mod-institucional { --mod-color: var(--slate-500);  --mod-light: var(--slate-50);  --mod-dark: var(--slate-700); }
+.mod-pessoas       { --mod-color: var(--pink-500);   --mod-light: var(--pink-50);   --mod-dark: var(--pink-700); }
+.mod-beneficiarios { --mod-color: var(--cyan-500);   --mod-light: var(--cyan-50);   --mod-dark: var(--cyan-700); }
+.mod-financeiro    { --mod-color: var(--green-500);  --mod-light: var(--green-50);  --mod-dark: var(--green-700); }
+.mod-projetos      { --mod-color: var(--yellow-500); --mod-light: var(--yellow-50); --mod-dark: var(--yellow-700); }
+.mod-documentos    { --mod-color: var(--orange-500); --mod-light: var(--orange-50); --mod-dark: var(--orange-700); }
+.mod-captacao      { --mod-color: var(--purple-500); --mod-light: var(--purple-50); --mod-dark: var(--purple-700); }
+.mod-relatorios    { --mod-color: var(--blue-600);   --mod-light: var(--blue-50);   --mod-dark: var(--blue-900); }
+.mod-comunicacao   { --mod-color: var(--lilac-500);  --mod-light: var(--lilac-50);  --mod-dark: var(--lilac-700); }
+.mod-usuarios      { --mod-color: var(--purple-500); --mod-light: var(--purple-50); --mod-dark: var(--purple-700); }
+.mod-alertas       { --mod-color: var(--red-500);    --mod-light: var(--red-50);    --mod-dark: var(--red-700); }
 
-/* ── Scrollbar ────────────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--gray-200); border-radius: 99px; }
