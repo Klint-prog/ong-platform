@@ -23,6 +23,18 @@ import NovoProjetoPage from './pages/projetos/NovoProjetoPage'
 import { Search, Bell, Settings } from 'lucide-react'
 import Configuracoes from './pages/configuracoes/Configuracoes'
 
+const AUTH_STORAGE_KEY = 'ong_platform_auth_user'
+
+function carregarUsuarioSalvo() {
+  try {
+    const salvo = localStorage.getItem(AUTH_STORAGE_KEY)
+    return salvo ? JSON.parse(salvo) : null
+  } catch {
+    localStorage.removeItem(AUTH_STORAGE_KEY)
+    return null
+  }
+}
+
 function AppShell({ user, onLogout }) {
   const navigate = useNavigate()
   const [menuAberto, setMenuAberto] = useState(false)
@@ -132,12 +144,22 @@ function AppShell({ user, onLogout }) {
 }
 
 export default function App() {
-  const [user, setUser] = useState(null)
+  const [user, setUser] = useState(() => carregarUsuarioSalvo())
 
-  if (!user) return <Login onLogin={setUser} />
+  const handleLogin = (usuario) => {
+    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(usuario))
+    setUser(usuario)
+  }
+
+  const handleLogout = () => {
+    localStorage.removeItem(AUTH_STORAGE_KEY)
+    setUser(null)
+  }
+
+  if (!user) return <Login onLogin={handleLogin} />
   return (
     <BrowserRouter>
-      <AppShell user={user} onLogout={() => setUser(null)} />
+      <AppShell user={user} onLogout={handleLogout} />
     </BrowserRouter>
   )
 }
