@@ -48,10 +48,11 @@ export function addComprovanteStorage(comprovante) {
   const current = listComprovantesStorage()
   const nextItem = {
     id: comprovante.id || gerarId(),
+    anexos: Array.isArray(comprovante.anexos) ? comprovante.anexos : [],
     ...comprovante,
   }
 
-  salvarArray([nextItem, ...current])
+  salvarArray([nextItem, ...current.filter((item) => String(item.id) !== String(nextItem.id))])
   return nextItem
 }
 
@@ -65,6 +66,13 @@ export function updateComprovanteStorage(comprovante) {
 export function deleteComprovanteStorage(id) {
   const current = listComprovantesStorage()
   const next = current.filter((item) => String(item.id) !== String(id))
+  salvarArray(next)
+  return next
+}
+
+export function deleteComprovanteByTransacaoStorage(transacaoId) {
+  const current = listComprovantesStorage()
+  const next = current.filter((item) => String(item.transacaoId) !== String(transacaoId))
   salvarArray(next)
   return next
 }
