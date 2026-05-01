@@ -33,3 +33,37 @@ export function carregarProjetos() {
 export function salvarProjetos(projetos) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.isArray(projetos) ? projetos : []))
 }
+
+export function buscarProjetoPorId(id) {
+  return carregarProjetos().find((projeto) => String(projeto.id) === String(id))
+}
+
+export function upsertProjeto(payload, id) {
+  const projetos = carregarProjetos()
+  const projetoData = {
+    ...payload,
+    orcamento: Number(payload.orcamento || 0),
+    gasto: Number(payload.gasto || 0),
+    pessoas: Number(payload.pessoas || 0),
+    tarefas: payload.tarefas || { total: 0, concluidas: 0 },
+    tags: Array.isArray(payload.tags) ? payload.tags : [],
+    documentos: Array.isArray(payload.documentos) ? payload.documentos : [],
+    cor: payload.cor || '#3b82f6',
+  }
+
+  if (id) {
+    const atualizados = projetos.map((projeto) => String(projeto.id) === String(id) ? { ...projeto, ...projetoData, id: projeto.id } : projeto)
+    salvarProjetos(atualizados)
+    return id
+  }
+
+  const novoId = Date.now()
+  salvarProjetos([{ ...projetoData, id: novoId }, ...projetos])
+  return novoId
+}
+
+export function excluirProjeto(id) {
+  const atualizados = carregarProjetos().filter((projeto) => String(projeto.id) !== String(id))
+  salvarProjetos(atualizados)
+  return atualizados
+}
