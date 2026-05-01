@@ -1,4 +1,5 @@
 import { Building2, FileCheck2, ShieldCheck, Users, MapPin } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 
 const documentos = [
   { nome: 'Estatuto social', status: 'Atualizado', vencimento: 'Sem vencimento', badge: 'badge-green' },
@@ -8,12 +9,19 @@ const documentos = [
 ]
 
 const diretoria = [
-  { cargo: 'Presidência', nome: 'Eliel Gomes da Silva' },
-  { cargo: 'Diretoria de Operações', nome: 'Jhonatas Mendes' },
-  { cargo: 'Conselho fiscal', nome: '3 membros cadastrados' },
+  { cargo: 'Presidente', nome: 'Eliel Gomes da Silva' },
+  { cargo: 'Vice-presidente', nome: 'A definir' },
+  { cargo: 'Diretor de Operações', nome: 'Jhonatas Mendes' },
+  { cargo: 'Vice-diretor de Operações', nome: 'A definir' },
+  { cargo: 'Secretária', nome: 'A definir' },
+  { cargo: 'Diretor Financeiro', nome: 'A definir' },
+  { cargo: 'Vice-diretor Financeiro', nome: 'A definir' },
+  { cargo: 'Conselheiros', nome: '3 membros cadastrados' },
 ]
 
 export default function Institucional() {
+  const navigate = useNavigate()
+
   return (
     <div className="mod-institucional animate-fade-in">
       <div className="page-header">
@@ -21,13 +29,13 @@ export default function Institucional() {
           <h1 className="page-title">Institucional</h1>
           <p className="page-subtitle">Dados oficiais da ONG, diretoria, certidões e identidade institucional</p>
         </div>
-        <button className="btn btn-primary"><Building2 size={16} /> Editar cadastro</button>
+        <button className="btn btn-primary" onClick={() => navigate('/institucional/editar')}><Building2 size={16} /> Editar cadastro</button>
       </div>
 
       <div className="grid-4" style={{ marginBottom: 24 }}>
         <div className="stat-card mod-institucional"><div className="stat-icon"><Building2 size={20} /></div><div><div className="stat-label">CNPJ</div><div className="stat-value" style={{ fontSize: 20 }}>07.779.623</div></div></div>
         <div className="stat-card mod-documentos"><div className="stat-icon"><FileCheck2 size={20} /></div><div><div className="stat-label">Documentos</div><div className="stat-value">18</div></div></div>
-        <div className="stat-card mod-beneficiarios"><div className="stat-icon"><Users size={20} /></div><div><div className="stat-label">Diretoria</div><div className="stat-value">7</div></div></div>
+        <div className="stat-card mod-beneficiarios"><div className="stat-icon"><Users size={20} /></div><div><div className="stat-label">Diretoria</div><div className="stat-value">10</div></div></div>
         <div className="stat-card mod-captacao"><div className="stat-icon"><ShieldCheck size={20} /></div><div><div className="stat-label">Conformidade</div><div className="stat-value">92%</div></div></div>
       </div>
 

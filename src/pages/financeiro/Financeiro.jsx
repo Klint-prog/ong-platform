@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   DollarSign, TrendingUp, TrendingDown, Plus, ArrowUpRight, ArrowDownRight,
@@ -18,6 +18,9 @@ const contas = [
   { id: 3, nome: 'Projeto Horta Solidária', tipo: 'Conta por projeto', banco: 'Caixa', saldoInicial: 0, saldoAtual: 11500, responsavel: 'Coordenação de Projetos', status: 'ATIVA' },
   { id: 4, nome: 'Carteira PIX Doações', tipo: 'Carteira digital', banco: 'PIX', saldoInicial: 0, saldoAtual: 2450, responsavel: 'Diretoria', status: 'ATIVA' },
 ]
+
+
+const STORAGE_KEY = 'financeiro_transacoes'
 
 const transacoesSeed = [
   { id: 1, descricao: 'Doação — Maria Silva', tipo: 'RECEITA', valor: 500, categoria: 'Doações', data: '2026-04-12', vencimento: '2026-04-12', pagamento: '2026-04-12', status: 'RECEBIDA', projeto: 'Fundo Geral', conta: 'Carteira PIX Doações', origem: 'Pessoa física', forma: 'PIX', comprovante: 'VALIDO' },
@@ -85,11 +88,17 @@ export default function Financeiro() {
   const [aba, setAba] = useState('visao')
   const [busca, setBusca] = useState('')
   const [projetoFiltro, setProjetoFiltro] = useState('TODOS')
+  const [transacoes, setTransacoes] = useState(transacoesSeed)
   const navigate = useNavigate()
 
-  const projetos = ['TODOS', ...new Set(transacoesSeed.map((t) => t.projeto))]
+  useEffect(() => {
+    const extras = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]')
+    setTransacoes([...extras, ...transacoesSeed])
+  }, [])
 
-  const transacoesFiltradas = useMemo(() => transacoesSeed.filter((t) => {
+  const projetos = ['TODOS', ...new Set(transacoes.map((t) => t.projeto))]
+
+  const transacoesFiltradas = useMemo(() => transacoes.filter((t) => {
     const termo = busca.toLowerCase()
     const texto = [t.descricao, t.categoria, t.projeto, t.conta, t.origem, t.fornecedor].join(' ').toLowerCase()
     const matchBusca = texto.includes(termo)
@@ -97,10 +106,10 @@ export default function Financeiro() {
     return matchBusca && matchProjeto
   }), [busca, projetoFiltro])
 
-  const receitas = transacoesSeed.filter((t) => t.tipo === 'RECEITA' && t.status === 'RECEBIDA').reduce((s, t) => s + t.valor, 0)
-  const receitasPrevistas = transacoesSeed.filter((t) => t.tipo === 'RECEITA' && t.status === 'PREVISTA').reduce((s, t) => s + t.valor, 0)
-  const despesas = transacoesSeed.filter((t) => t.tipo === 'DESPESA' && t.status === 'PAGA').reduce((s, t) => s + t.valor, 0)
-  const despesasAbertas = transacoesSeed.filter((t) => t.tipo === 'DESPESA' && t.status !== 'PAGA').reduce((s, t) => s + t.valor, 0)
+  const receitas = transacoes.filter((t) => t.tipo === 'RECEITA' && t.status === 'RECEBIDA').reduce((s, t) => s + t.valor, 0)
+  const receitasPrevistas = transacoes.filter((t) => t.tipo === 'RECEITA' && t.status === 'PREVISTA').reduce((s, t) => s + t.valor, 0)
+  const despesas = transacoes.filter((t) => t.tipo === 'DESPESA' && t.status === 'PAGA').reduce((s, t) => s + t.valor, 0)
+  const despesasAbertas = transacoes.filter((t) => t.tipo === 'DESPESA' && t.status !== 'PAGA').reduce((s, t) => s + t.valor, 0)
   const saldo = contas.reduce((s, conta) => s + conta.saldoAtual, 0)
   const pendentes = comprovantes.filter((c) => c.status === 'PENDENTE').length
 
@@ -206,7 +215,7 @@ export default function Financeiro() {
       {aba === 'contas' && <AccountsTable contas={contas} />}
       {aba === 'orcamentos' && <BudgetsTable orcamentos={orcamentos} />}
       {aba === 'comprovantes' && <AttachmentsTable comprovantes={comprovantes} />}
-      {aba === 'prestacao' && <AccountabilityReport transacoes={transacoesSeed} orcamentos={orcamentos} comprovantes={comprovantes} />}
+      {aba === 'prestacao' && <AccountabilityReport transacoes={transacoes} orcamentos={orcamentos} comprovantes={comprovantes} />}
     </div>
   )
 }
