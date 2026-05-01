@@ -9,6 +9,7 @@ import {
   PieChart, Pie, Cell, Tooltip, ResponsiveContainer, AreaChart, Area,
   XAxis, YAxis, CartesianGrid, BarChart, Bar, Legend
 } from 'recharts'
+import { listTransacoesStorage } from './transacoesStorage'
 
 const fmt = (v) => `R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
 
@@ -85,24 +86,31 @@ export default function Financeiro() {
   const [aba, setAba] = useState('visao')
   const [busca, setBusca] = useState('')
   const [projetoFiltro, setProjetoFiltro] = useState('TODOS')
+  const [tipoFiltro, setTipoFiltro] = useState('TODOS')
+  const [comprovantesState, setComprovantesState] = useState(comprovantes)
   const navigate = useNavigate()
+  const transacoes = useMemo(() => [...listTransacoesStorage(), ...transacoesSeed], [])
 
-  const projetos = ['TODOS', ...new Set(transacoesSeed.map((t) => t.projeto))]
+  const projetos = ['TODOS', ...new Set(transacoes.map((t) => t.projeto))]
+  const tipos = ['TODOS', ...new Set(transacoes.map((t) => t.tipo))]
 
-  const transacoesFiltradas = useMemo(() => transacoesSeed.filter((t) => {
+  const transacoesFiltradas = useMemo(() => transacoes.filter((t) => {
     const termo = busca.toLowerCase()
     const texto = [t.descricao, t.categoria, t.projeto, t.conta, t.origem, t.fornecedor].join(' ').toLowerCase()
     const matchBusca = texto.includes(termo)
     const matchProjeto = projetoFiltro === 'TODOS' || t.projeto === projetoFiltro
-    return matchBusca && matchProjeto
-  }), [busca, projetoFiltro])
+    const matchTipo = tipoFiltro === 'TODOS' || t.tipo === tipoFiltro
+    return matchBusca && matchProjeto && matchTipo
+  }), [busca, projetoFiltro, tipoFiltro, transacoes])
 
-  const receitas = transacoesSeed.filter((t) => t.tipo === 'RECEITA' && t.status === 'RECEBIDA').reduce((s, t) => s + t.valor, 0)
-  const receitasPrevistas = transacoesSeed.filter((t) => t.tipo === 'RECEITA' && t.status === 'PREVISTA').reduce((s, t) => s + t.valor, 0)
-  const despesas = transacoesSeed.filter((t) => t.tipo === 'DESPESA' && t.status === 'PAGA').reduce((s, t) => s + t.valor, 0)
-  const despesasAbertas = transacoesSeed.filter((t) => t.tipo === 'DESPESA' && t.status !== 'PAGA').reduce((s, t) => s + t.valor, 0)
+  const receitas = transacoes.filter((t) => t.tipo === 'RECEITA' && t.status === 'RECEBIDA').reduce((s, t) => s + t.valor, 0)
+  const receitasPrevistas = transacoes.filter((t) => t.tipo === 'RECEITA' && t.status === 'PREVISTA').reduce((s, t) => s + t.valor, 0)
+  const despesas = transacoes.filter((t) => t.tipo === 'DESPESA' && t.status === 'PAGA').reduce((s, t) => s + t.valor, 0)
+  const despesasAbertas = transacoes.filter((t) => t.tipo === 'DESPESA' && t.status !== 'PAGA').reduce((s, t) => s + t.valor, 0)
   const saldo = contas.reduce((s, conta) => s + conta.saldoAtual, 0)
-  const pendentes = comprovantes.filter((c) => c.status === 'PENDENTE').length
+  const pendentes = comprovantesState.filter((c) => c.status === 'PENDENTE').length
+  const handleVerComprovante = (doc) => window.alert(`Visualizando ${doc.documento}`)
+  const handleValidarComprovante = (doc) => setComprovantesState((prev) => prev.map((item) => item.id === doc.id ? { ...item, status: 'VALIDO', validador: 'Tesouraria' } : item))
 
   return (
     <div className="mod-financeiro animate-fade-in">
@@ -139,6 +147,9 @@ export default function Financeiro() {
             </div>
             <select value={projetoFiltro} onChange={(e) => setProjetoFiltro(e.target.value)} style={{ maxWidth: 240 }}>
               {projetos.map((projeto) => <option key={projeto} value={projeto}>{projeto === 'TODOS' ? 'Todos os projetos' : projeto}</option>)}
+            </select>
+            <select value={tipoFiltro} onChange={(e) => setTipoFiltro(e.target.value)} style={{ maxWidth: 200 }}>
+              {tipos.map((tipo) => <option key={tipo} value={tipo}>{tipo === 'TODOS' ? 'Todos os tipos' : tipo}</option>)}
             </select>
           </div>
         </div>
@@ -205,8 +216,8 @@ export default function Financeiro() {
       {aba === 'despesas' && <TransactionsTable transacoes={transacoesFiltradas.filter((t) => t.tipo === 'DESPESA')} title="Despesas" />}
       {aba === 'contas' && <AccountsTable contas={contas} />}
       {aba === 'orcamentos' && <BudgetsTable orcamentos={orcamentos} />}
-      {aba === 'comprovantes' && <AttachmentsTable comprovantes={comprovantes} />}
-      {aba === 'prestacao' && <AccountabilityReport transacoes={transacoesSeed} orcamentos={orcamentos} comprovantes={comprovantes} />}
+      {aba === 'comprovantes' && <AttachmentsTable comprovantes={comprovantesState} onView={handleVerComprovante} onValidate={handleValidarComprovante} />}
+      {aba === 'prestacao' && <AccountabilityReport transacoes={transacoes} orcamentos={orcamentos} comprovantes={comprovantesState} />}
     </div>
   )
 }
@@ -374,7 +385,7 @@ function BudgetsTable({ orcamentos }) {
   )
 }
 
-function AttachmentsTable({ comprovantes }) {
+function AttachmentsTable({ comprovantes, onView, onValidate }) {
   return (
     <div className="card">
       <CardTitle title="Comprovantes financeiros" subtitle="Notas fiscais, recibos, PIX, contratos e evidências" />

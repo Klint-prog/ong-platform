@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import NfpService from '../../services/NfpService'
 import { QrCode, Hand, Landmark, Send, Trash2 } from 'lucide-react'
 
 const STORAGE_KEY = 'nfp_scans'
@@ -53,6 +54,8 @@ export default function NotasPaulista() {
   })
   const [erro, setErro] = useState('')
 
+  const nfpService = useMemo(() => new NfpService(), [])
+
   const persist = (next) => {
     setScans(next)
     localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
@@ -79,6 +82,38 @@ export default function NotasPaulista() {
 
   const removerTudo = () => {
     persist([])
+  }
+
+
+  const baixarLoteTxt = () => {
+    try {
+      const notas = scans.map((s) => ({
+        chave: s.chaveAcesso,
+        valor: s.valor,
+        dataEmissao: s.dataHora,
+      }))
+
+      const txt = nfpService.gerarArquivoLote(
+        {
+          cnpj: '12.345.678/0001-99',
+          mesReferencia: new Date().toISOString().slice(0, 7).replace('-', ''),
+        },
+        notas,
+      )
+
+      const blob = new Blob([txt], { type: 'text/plain;charset=utf-8' })
+      const blobUrl = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = blobUrl
+      a.download = `nfp-lote-${new Date().toISOString().slice(0, 10)}.txt`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(blobUrl)
+      setErro('')
+    } catch (e) {
+      setErro(e.message || 'Não foi possível gerar o arquivo posicional.')
+    }
   }
 
   const resumo = useMemo(() => {
@@ -129,6 +164,7 @@ export default function NotasPaulista() {
           />
           <button className="btn btn-primary" onClick={registrarScan}>Registrar</button>
           <button className="btn btn-outline" onClick={removerTudo}><Trash2 size={15} /> Limpar</button>
+          <button className="btn btn-primary" onClick={baixarLoteTxt}>Gerar .txt</button>
         </div>
         {erro && <div style={{ marginTop: 10, color: 'var(--red-600)', fontSize: 13 }}>{erro}</div>}
       </div>

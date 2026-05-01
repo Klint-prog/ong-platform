@@ -1,7 +1,7 @@
-import { useState } from 'react'
-import { FileText, Upload, Download, AlertTriangle, FolderOpen, Search } from 'lucide-react'
+import { useMemo, useRef, useState } from 'react'
+import { FileText, Upload, Download, AlertTriangle, FolderOpen, Search, Plus, Eye, ChevronDown } from 'lucide-react'
 
-const docs = [
+const docsIniciais = [
   { id: 1, nome: 'Estatuto Social.pdf', pasta: 'Institucional', tipo: 'PDF', projeto: 'ONG', vencimento: 'Sem vencimento', status: 'ATUALIZADO' },
   { id: 2, nome: 'Lista de presença - Horta Solidária.xlsx', pasta: 'Projetos', tipo: 'Planilha', projeto: 'Horta Solidária', vencimento: 'Sem vencimento', status: 'ATUALIZADO' },
   { id: 3, nome: 'Nota fiscal materiais agrícolas.pdf', pasta: 'Financeiro', tipo: 'PDF', projeto: 'Horta Solidária', vencimento: 'Sem vencimento', status: 'PENDENTE_REVISAO' },
@@ -15,9 +15,101 @@ const status = {
   VENCE_EM_BREVE: { label: 'Vence em breve', badge: 'badge-red' },
 }
 
+const tipoPorExtensao = {
+  pdf: 'PDF',
+  xls: 'Planilha',
+  xlsx: 'Planilha',
+  csv: 'Planilha',
+  doc: 'Documento',
+  docx: 'Documento',
+  ppt: 'Apresentação',
+  pptx: 'Apresentação',
+  zip: 'Arquivo',
+  rar: 'Arquivo',
+}
+
+function criarRegistroArquivo(file, id, pastaPadrao = 'Upload') {
+  const extensao = file.name.split('.').pop()?.toLowerCase() || ''
+  const pastaOrigem = file.webkitRelativePath ? file.webkitRelativePath.split('/')[0] : pastaPadrao
+
+  return {
+    id,
+    nome: file.name,
+    pasta: pastaOrigem,
+    tipo: tipoPorExtensao[extensao] || 'Arquivo',
+    projeto: 'ONG',
+    vencimento: 'Sem vencimento',
+    status: 'ATUALIZADO',
+    file,
+  }
+}
+
 export default function Documentos() {
   const [busca, setBusca] = useState('')
-  const filtrados = docs.filter((d) => [d.nome, d.pasta, d.projeto, d.tipo].join(' ').toLowerCase().includes(busca.toLowerCase()))
+  const [docs, setDocs] = useState(docsIniciais)
+  const [menuAberto, setMenuAberto] = useState(false)
+  const uploadArquivoRef = useRef(null)
+  const uploadPastaRef = useRef(null)
+
+  const filtrados = useMemo(
+    () => docs.filter((d) => [d.nome, d.pasta, d.projeto, d.tipo].join(' ').toLowerCase().includes(busca.toLowerCase())),
+    [busca, docs],
+  )
+
+  const totalPastas = useMemo(() => new Set(docs.map((d) => d.pasta)).size, [docs])
+
+  const uploadArquivos = (files) => {
+    if (!files || files.length === 0) return
+    const base = Date.now()
+    const novos = Array.from(files).map((file, index) => criarRegistroArquivo(file, base + index))
+    setDocs((prev) => [...novos, ...prev])
+    setMenuAberto(false)
+  }
+
+  const criarPasta = () => {
+    const nome = window.prompt('Nome da nova pasta:')?.trim()
+    if (!nome) return
+
+    setDocs((prev) => [
+      {
+        id: Date.now(),
+        nome: `${nome} (pasta)`,
+        pasta: nome,
+        tipo: 'Pasta',
+        projeto: 'ONG',
+        vencimento: 'Sem vencimento',
+        status: 'ATUALIZADO',
+      },
+      ...prev,
+    ])
+    setMenuAberto(false)
+  }
+
+  const visualizarDocumento = (doc) => {
+    if (!doc.file) {
+      window.alert('Visualização disponível apenas para arquivos enviados nesta sessão.')
+      return
+    }
+    const url = URL.createObjectURL(doc.file)
+    window.open(url, '_blank', 'noopener,noreferrer')
+    setTimeout(() => URL.revokeObjectURL(url), 60_000)
+  }
+
+  const baixarDocumento = (doc) => {
+    if (!doc.file) {
+      window.alert('Download local disponível apenas para arquivos enviados nesta sessão.')
+      return
+    }
+
+    const url = URL.createObjectURL(doc.file)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = doc.nome
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    URL.revokeObjectURL(url)
+  }
 
   return (
     <div className="mod-documentos animate-fade-in">
@@ -26,12 +118,23 @@ export default function Documentos() {
           <h1 className="page-title">Documentos</h1>
           <p className="page-subtitle">Central de arquivos, evidências, certidões, recibos e documentos de prestação de contas</p>
         </div>
-        <button className="btn btn-primary"><Upload size={16} /> Enviar arquivo</button>
+        <div style={{ position: 'relative' }}>
+          <button className="btn btn-primary" onClick={() => setMenuAberto((prev) => !prev)}><Plus size={16} /> Novo <ChevronDown size={16} /></button>
+          {menuAberto && (
+            <div className="card" style={{ position: 'absolute', right: 0, top: 'calc(100% + 8px)', padding: 8, minWidth: 220, zIndex: 20 }}>
+              <button className="btn btn-ghost" style={{ width: '100%', justifyContent: 'flex-start' }} onClick={criarPasta}><FolderOpen size={15} /> Nova pasta</button>
+              <button className="btn btn-ghost" style={{ width: '100%', justifyContent: 'flex-start' }} onClick={() => uploadArquivoRef.current?.click()}><Upload size={15} /> Upload de arquivo</button>
+              <button className="btn btn-ghost" style={{ width: '100%', justifyContent: 'flex-start' }} onClick={() => uploadPastaRef.current?.click()}><Upload size={15} /> Upload de pasta</button>
+            </div>
+          )}
+          <input ref={uploadArquivoRef} type="file" style={{ display: 'none' }} onChange={(e) => uploadArquivos(e.target.files)} />
+          <input ref={uploadPastaRef} type="file" webkitdirectory="true" directory="true" multiple style={{ display: 'none' }} onChange={(e) => uploadArquivos(e.target.files)} />
+        </div>
       </div>
 
       <div className="grid-4" style={{ marginBottom: 24 }}>
         <div className="stat-card mod-documentos"><div className="stat-icon"><FileText size={20} /></div><div><div className="stat-label">Arquivos</div><div className="stat-value">{docs.length}</div></div></div>
-        <div className="stat-card mod-dashboard"><div className="stat-icon"><FolderOpen size={20} /></div><div><div className="stat-label">Pastas</div><div className="stat-value">5</div></div></div>
+        <div className="stat-card mod-dashboard"><div className="stat-icon"><FolderOpen size={20} /></div><div><div className="stat-label">Pastas</div><div className="stat-value">{totalPastas}</div></div></div>
         <div className="stat-card mod-captacao"><div className="stat-icon"><Download size={20} /></div><div><div className="stat-label">Downloads</div><div className="stat-value">43</div></div></div>
         <div className="stat-card mod-alertas"><div className="stat-icon"><AlertTriangle size={20} /></div><div><div className="stat-label">Pendências</div><div className="stat-value">2</div></div></div>
       </div>
@@ -56,7 +159,10 @@ export default function Documentos() {
                   <td><span className="badge badge-gray">{doc.tipo}</span></td>
                   <td>{doc.vencimento}</td>
                   <td><span className={`badge ${status[doc.status].badge}`}>{status[doc.status].label}</span></td>
-                  <td style={{ display: 'flex', gap: 8 }}><button className="btn btn-sm btn-outline">Ver</button><button className="btn btn-sm btn-outline"><Download size={13} /> Baixar</button></td>
+                  <td style={{ display: 'flex', gap: 8 }}>
+                    <button className="btn btn-sm btn-outline" onClick={() => visualizarDocumento(doc)}><Eye size={13} /> Ver</button>
+                    <button className="btn btn-sm btn-outline" onClick={() => baixarDocumento(doc)}><Download size={13} /> Baixar</button>
+                  </td>
                 </tr>
               ))}
             </tbody>
