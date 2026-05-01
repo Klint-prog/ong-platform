@@ -4,6 +4,7 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import CadastroEntity from './CadastroEntity'
 import { findPessoaById, upsertPessoa } from '../pessoas/pessoasStorage'
 import { loadInstitucional, saveInstitucional } from '../institucional/institucionalStorage'
+import { addTransacaoStorage } from '../financeiro/transacoesStorage'
 
 const CAMPOS_PESSOA = [
   { name: 'nome', label: 'Nome completo', placeholder: 'Ex.: Maria da Silva' },
@@ -73,15 +74,20 @@ export function NovaTransacaoPage() {
         },
       ]}
       onSave={(form) => {
+        const tipo = form.tipo || 'RECEITA'
         addTransacaoStorage({
           ...form,
+          tipo,
+          categoria: form.categoria || (tipo === 'RECEITA' ? 'Doações' : 'Serviços'),
+          descricao: form.descricao || 'Transação sem descrição',
           valor: Number(form.valor || 0),
-          status: form.tipo === 'RECEITA' ? 'RECEBIDA' : 'APROVADA',
+          status: tipo === 'RECEITA' ? 'RECEBIDA' : 'APROVADA',
           data: new Date().toISOString().slice(0, 10),
           vencimento: new Date().toISOString().slice(0, 10),
-          pagamento: null,
+          pagamento: tipo === 'RECEITA' ? new Date().toISOString().slice(0, 10) : null,
           projeto: 'Fundo Geral',
           conta: 'Conta principal ONG',
+          forma: 'Manual',
           comprovante: 'PENDENTE',
         })
         navigate('/financeiro')
