@@ -169,6 +169,19 @@ export default function Documentos() {
           </table>
         </div>
       </div>
+
+      {previewDoc && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.55)', zIndex: 50, display: 'grid', placeItems: 'center', padding: 24 }}>
+          <div className="card" style={{ width: 'min(1100px, 100%)', height: 'min(85vh, 760px)', padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+              <strong style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{previewDoc.nome}</strong>
+              <button className="btn btn-sm btn-outline" onClick={fecharPreview}>Fechar</button>
+            </div>
+            <iframe title={previewDoc.nome} src={previewDoc.url} style={{ width: '100%', flex: 1, border: '1px solid var(--gray-100)', borderRadius: 8 }} />
+          </div>
+        </div>
+      )}
+
     </div>
   )
 }
