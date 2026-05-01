@@ -1,4 +1,4 @@
-import { addComprovanteStorage } from './comprovantesStorage'
+import { addComprovanteStorage, deleteComprovanteByTransacaoStorage } from './comprovantesStorage'
 
 const KEY = 'ong_financeiro_transacoes'
 
@@ -20,6 +20,13 @@ export function listTransacoesStorage() {
   }
 }
 
+export function saveTransacoesStorage(transacoes) {
+  if (typeof window === 'undefined') return []
+  const normalized = Array.isArray(transacoes) ? transacoes : []
+  window.localStorage.setItem(KEY, JSON.stringify(normalized))
+  return normalized
+}
+
 export function addTransacaoStorage(transacao) {
   if (typeof window === 'undefined') return null
 
@@ -27,15 +34,16 @@ export function addTransacaoStorage(transacao) {
   const nextItem = {
     id: gerarId(),
     ...transacao,
+    anexos: Array.isArray(transacao.anexos) ? transacao.anexos : [],
   }
 
   const next = [nextItem, ...current]
-  window.localStorage.setItem(KEY, JSON.stringify(next))
+  saveTransacoesStorage(next)
 
   if (nextItem.comprovante === 'PENDENTE') {
     addComprovanteStorage({
       id: `comp-${nextItem.id}`,
-      documento: `comprovante-${String(nextItem.descricao || 'transacao').toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}.txt`,
+      documento: nextItem.anexos?.[0]?.nome || `comprovante-${String(nextItem.descricao || 'transacao').toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}.txt`,
       tipo: nextItem.tipo === 'RECEITA' ? 'Comprovante de receita' : 'Comprovante de despesa',
       lancamento: nextItem.descricao || 'Transação sem descrição',
       projeto: nextItem.projeto || 'Fundo Geral',
@@ -43,8 +51,16 @@ export function addTransacaoStorage(transacao) {
       status: 'PENDENTE',
       validador: '-',
       transacaoId: nextItem.id,
+      anexos: nextItem.anexos || [],
     })
   }
 
   return nextItem
+}
+
+export function deleteTransacaoStorage(id) {
+  const next = listTransacoesStorage().filter((item) => String(item.id) !== String(id))
+  saveTransacoesStorage(next)
+  deleteComprovanteByTransacaoStorage(id)
+  return next
 }

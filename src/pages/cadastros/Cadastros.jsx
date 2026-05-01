@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { ArrowLeft, Save, Send } from 'lucide-react'
+import { ArrowLeft, Save, Send, Upload, X } from 'lucide-react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import CadastroEntity from './CadastroEntity'
 import { findPessoaById, upsertPessoa } from '../pessoas/pessoasStorage'
@@ -44,57 +44,163 @@ export function EditarPessoaPage() {
   )
 }
 
+function arquivoParaBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve({
+      id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      nome: file.name,
+      tipo: file.type || 'application/octet-stream',
+      tamanho: file.size,
+      conteudo: reader.result,
+    })
+    reader.onerror = reject
+    reader.readAsDataURL(file)
+  })
+}
+
 export function NovaTransacaoPage() {
   const navigate = useNavigate()
+  const [form, setForm] = useState({
+    descricao: '',
+    categoria: 'Doações',
+    valor: '',
+    tipo: 'RECEITA',
+    projeto: 'Fundo Geral',
+    conta: 'Conta principal ONG',
+    forma: 'Manual',
+    status: '',
+  })
+  const [anexos, setAnexos] = useState([])
+  const [processandoAnexo, setProcessandoAnexo] = useState(false)
+
+  const atualizarCampo = (campo, valor) => setForm((atual) => ({ ...atual, [campo]: valor }))
+
+  const adicionarAnexos = async (event) => {
+    const files = Array.from(event.target.files || [])
+    if (!files.length) return
+    setProcessandoAnexo(true)
+    try {
+      const convertidos = await Promise.all(files.map(arquivoParaBase64))
+      setAnexos((atuais) => [...convertidos, ...atuais])
+    } finally {
+      setProcessandoAnexo(false)
+      event.target.value = ''
+    }
+  }
+
+  const removerAnexo = (id) => setAnexos((atuais) => atuais.filter((anexo) => anexo.id !== id))
+
+  const salvar = (event) => {
+    event.preventDefault()
+    const tipo = form.tipo || 'RECEITA'
+    const dataHoje = new Date().toISOString().slice(0, 10)
+    const status = form.status || (tipo === 'RECEITA' ? 'RECEBIDA' : 'PAGA')
+
+    addTransacaoStorage({
+      ...form,
+      tipo,
+      categoria: form.categoria || (tipo === 'RECEITA' ? 'Doações' : 'Serviços'),
+      descricao: form.descricao || 'Transação sem descrição',
+      valor: Number(form.valor || 0),
+      status,
+      data: dataHoje,
+      vencimento: dataHoje,
+      pagamento: ['RECEBIDA', 'PAGA'].includes(status) ? dataHoje : null,
+      projeto: form.projeto || 'Fundo Geral',
+      conta: form.conta || 'Conta principal ONG',
+      forma: form.forma || 'Manual',
+      comprovante: anexos.length ? 'PENDENTE' : 'PENDENTE',
+      anexos,
+    })
+    navigate('/financeiro')
+  }
 
   return (
-    <CadastroEntity titulo="Nova transação" subtitulo="Registre receitas e despesas da organização" cor="var(--green-500)"
-      campos={[
-        { name: 'descricao', label: 'Descrição', placeholder: 'Ex.: Doação - Empresa XYZ' },
-        {
-          name: 'categoria',
-          label: 'Categoria (tags)',
-          type: 'tag-selector',
-          options: [
-            { name: 'Doações', color: '#22c55e' },
-            { name: 'Patrocínios', color: '#a855f7' },
-            { name: 'Editais', color: '#3b82f6' },
-            { name: 'Aluguel', color: '#f97316' },
-          ],
-        },
-        { name: 'valor', label: 'Valor', type: 'number', placeholder: '0,00' },
-        {
-          name: 'tipo',
-          label: 'Tipo (tags)',
-          type: 'tag-selector',
-          options: [
-            { name: 'RECEITA', color: '#22c55e' },
-            { name: 'DESPESA', color: '#ef4444' },
-          ],
-        },
-      ]}
-      onSave={(form) => {
-        const tipo = form.tipo || 'RECEITA'
-        const dataHoje = new Date().toISOString().slice(0, 10)
+    <form className="card animate-fade-in" onSubmit={salvar} style={{ display: 'grid', gap: 14, maxWidth: 900 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start' }}>
+        <div>
+          <h1 className="page-title">Nova transação</h1>
+          <p className="page-subtitle">Registre receitas e despesas com documentos de comprovação.</p>
+        </div>
+        <button type="button" className="btn btn-outline" onClick={() => navigate('/financeiro')}><ArrowLeft size={16} /> Voltar</button>
+      </div>
 
-        addTransacaoStorage({
-          ...form,
-          tipo,
-          categoria: form.categoria || (tipo === 'RECEITA' ? 'Doações' : 'Serviços'),
-          descricao: form.descricao || 'Transação sem descrição',
-          valor: Number(form.valor || 0),
-          status: tipo === 'RECEITA' ? 'RECEBIDA' : 'APROVADA',
-          data: dataHoje,
-          vencimento: dataHoje,
-          pagamento: tipo === 'RECEITA' ? dataHoje : null,
-          projeto: 'Fundo Geral',
-          conta: 'Conta principal ONG',
-          forma: 'Manual',
-          comprovante: 'PENDENTE',
-        })
-        navigate('/financeiro')
-      }}
-    />
+      <div className="grid-2">
+        <label style={{ display: 'grid', gap: 6 }}>
+          <span style={{ fontSize: 13, fontWeight: 600 }}>Descrição</span>
+          <input value={form.descricao} onChange={(e) => atualizarCampo('descricao', e.target.value)} placeholder="Ex.: Doação - Empresa XYZ" required />
+        </label>
+        <label style={{ display: 'grid', gap: 6 }}>
+          <span style={{ fontSize: 13, fontWeight: 600 }}>Valor</span>
+          <input type="number" min="0" step="0.01" value={form.valor} onChange={(e) => atualizarCampo('valor', e.target.value)} placeholder="0,00" required />
+        </label>
+      </div>
+
+      <div className="grid-4">
+        <label style={{ display: 'grid', gap: 6 }}>
+          <span style={{ fontSize: 13, fontWeight: 600 }}>Tipo</span>
+          <select value={form.tipo} onChange={(e) => atualizarCampo('tipo', e.target.value)}>
+            <option value="RECEITA">Receita</option>
+            <option value="DESPESA">Despesa</option>
+          </select>
+        </label>
+        <label style={{ display: 'grid', gap: 6 }}>
+          <span style={{ fontSize: 13, fontWeight: 600 }}>Categoria</span>
+          <input value={form.categoria} onChange={(e) => atualizarCampo('categoria', e.target.value)} placeholder="Doações, Serviços, Aluguel..." />
+        </label>
+        <label style={{ display: 'grid', gap: 6 }}>
+          <span style={{ fontSize: 13, fontWeight: 600 }}>Status</span>
+          <select value={form.status} onChange={(e) => atualizarCampo('status', e.target.value)}>
+            <option value="">Automático</option>
+            <option value="RECEBIDA">Recebida</option>
+            <option value="PREVISTA">Prevista</option>
+            <option value="PAGA">Paga</option>
+            <option value="APROVADA">Aprovada</option>
+          </select>
+        </label>
+        <label style={{ display: 'grid', gap: 6 }}>
+          <span style={{ fontSize: 13, fontWeight: 600 }}>Forma</span>
+          <input value={form.forma} onChange={(e) => atualizarCampo('forma', e.target.value)} placeholder="PIX, dinheiro, boleto..." />
+        </label>
+      </div>
+
+      <div className="grid-2">
+        <label style={{ display: 'grid', gap: 6 }}>
+          <span style={{ fontSize: 13, fontWeight: 600 }}>Projeto</span>
+          <input value={form.projeto} onChange={(e) => atualizarCampo('projeto', e.target.value)} placeholder="Fundo Geral" />
+        </label>
+        <label style={{ display: 'grid', gap: 6 }}>
+          <span style={{ fontSize: 13, fontWeight: 600 }}>Conta</span>
+          <input value={form.conta} onChange={(e) => atualizarCampo('conta', e.target.value)} placeholder="Conta principal ONG" />
+        </label>
+      </div>
+
+      <div className="card-sm" style={{ display: 'grid', gap: 10, background: 'var(--gray-50)' }}>
+        <div>
+          <strong>Documentos de comprovação</strong>
+          <p style={{ fontSize: 12, color: 'var(--gray-500)', marginTop: 4 }}>Anexe fotos, PDFs, recibos, notas fiscais ou comprovantes bancários.</p>
+        </div>
+        <label className="btn btn-outline" style={{ width: 'fit-content', cursor: 'pointer' }}>
+          <Upload size={15} /> {processandoAnexo ? 'Processando...' : 'Adicionar documentos'}
+          <input type="file" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt" onChange={adicionarAnexos} style={{ display: 'none' }} />
+        </label>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {anexos.map((anexo) => (
+            <span key={anexo.id} className="badge badge-gray" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              {anexo.nome}
+              <button type="button" onClick={() => removerAnexo(anexo.id)} style={{ border: 0, background: 'transparent', cursor: 'pointer', display: 'inline-flex' }}><X size={12} /></button>
+            </span>
+          ))}
+          {!anexos.length && <span style={{ fontSize: 12, color: 'var(--gray-400)' }}>Nenhum documento anexado.</span>}
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+        <button type="button" className="btn btn-outline" onClick={() => navigate('/financeiro')}>Cancelar</button>
+        <button type="submit" className="btn btn-primary">Salvar transação</button>
+      </div>
+    </form>
   )
 }
 
