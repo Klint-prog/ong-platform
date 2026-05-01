@@ -1,4 +1,5 @@
 const KEY = 'ong_financeiro_comprovantes'
+const INIT_KEY = 'ong_financeiro_comprovantes_initialized'
 
 function gerarId(prefixo = 'comprovante') {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -22,7 +23,17 @@ function lerArray() {
 function salvarArray(items) {
   if (typeof window === 'undefined') return []
   window.localStorage.setItem(KEY, JSON.stringify(items))
+  window.localStorage.setItem(INIT_KEY, 'true')
   return items
+}
+
+export function ensureComprovantesStorage(defaultItems = []) {
+  if (typeof window === 'undefined') return defaultItems
+
+  const initialized = window.localStorage.getItem(INIT_KEY) === 'true'
+  if (initialized) return lerArray()
+
+  return salvarArray(defaultItems)
 }
 
 export function listComprovantesStorage() {
@@ -40,20 +51,20 @@ export function addComprovanteStorage(comprovante) {
     ...comprovante,
   }
 
-  saveComprovantesStorage([nextItem, ...current])
+  salvarArray([nextItem, ...current])
   return nextItem
 }
 
 export function updateComprovanteStorage(comprovante) {
   const current = listComprovantesStorage()
   const next = current.map((item) => String(item.id) === String(comprovante.id) ? comprovante : item)
-  saveComprovantesStorage(next)
+  salvarArray(next)
   return comprovante
 }
 
 export function deleteComprovanteStorage(id) {
   const current = listComprovantesStorage()
   const next = current.filter((item) => String(item.id) !== String(id))
-  saveComprovantesStorage(next)
+  salvarArray(next)
   return next
 }
