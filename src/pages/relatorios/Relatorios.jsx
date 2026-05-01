@@ -56,7 +56,6 @@ export default function Relatorios() {
                   <td>{relatorio.formato}</td>
                   <td><span className={`badge ${relatorio.status === 'Pronto' ? 'badge-green' : 'badge-yellow'}`}>{relatorio.status}</span></td>
                   <td className="no-print" style={{ display: 'flex', gap: 8 }}>
-                    <button className="btn btn-sm btn-outline">Visualizar</button>
                     <button className="btn btn-sm btn-primary" onClick={() => baixarPdf(relatorio.nome)}><Download size={13} /> PDF</button>
                   </td>
                 </tr>
