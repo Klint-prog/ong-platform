@@ -1,7 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { UsersRound, Plus, Search, MapPin, FileSignature, HeartHandshake, Trash2, Pencil, Check, X } from 'lucide-react'
-import { listarTipos, salvarTipos, TIPOS_PADRAO } from './tiposBeneficiario'
+import { useMemo, useState } from 'react'
+import { UsersRound, Plus, Search, MapPin, FileSignature, HeartHandshake, Trash2, Pencil } from 'lucide-react'
 
 const seedBeneficiarios = [
   { id: 1, nome: 'Família Silva', tipo: 'FAMILIA', comunidade: 'Engenho Sirigi', projeto: 'Horta Solidária', telefone: '(81) 98888-1111', status: 'ATIVO', termoLgpd: true, atendimentos: 7 },
@@ -15,36 +13,18 @@ const formatarTipo = (tipo) => tipo.replaceAll('_', ' ').toLowerCase().replace(/
 export default function Beneficiarios() {
   const [beneficiarios, setBeneficiarios] = useState(seedBeneficiarios)
   const [busca, setBusca] = useState('')
-  const [tipos, setTipos] = useState([])
-  const [novoTipo, setNovoTipo] = useState('')
-  const [editandoTipo, setEditandoTipo] = useState(null)
-  const [valorEdicaoTipo, setValorEdicaoTipo] = useState('')
-  const navigate = useNavigate()
-
-
-  useEffect(() => {
-    setTipos(listarTipos())
-  }, [])
-
-  const adicionarTipo = () => {
-    const normalizado = novoTipo.trim().toUpperCase().replaceAll(' ', '_')
-    if (!normalizado || tipos.includes(normalizado)) return
-    const atualizados = [...tipos, normalizado]
-    setTipos(atualizados)
-    salvarTipos(atualizados)
-    setNovoTipo('')
-  }
-
-  const salvarEdicaoTipo = () => {
-    const normalizado = valorEdicaoTipo.trim().toUpperCase().replaceAll(' ', '_')
-    if (!normalizado || tipos.includes(normalizado)) return
-    const atualizados = tipos.map((t) => (t === editandoTipo ? normalizado : t))
-    setTipos(atualizados)
-    salvarTipos(atualizados)
-    setBeneficiarios((atual) => atual.map((b) => (b.tipo === editandoTipo ? { ...b, tipo: normalizado } : b)))
-    setEditandoTipo(null)
-    setValorEdicaoTipo('')
-  }
+  const [modoFormulario, setModoFormulario] = useState('novo')
+  const [editandoId, setEditandoId] = useState(null)
+  const [form, setForm] = useState({
+    nome: '',
+    tipo: 'FAMILIA',
+    comunidade: '',
+    projeto: '',
+    telefone: '',
+    status: 'ATIVO',
+    termoLgpd: false,
+    atendimentos: 0,
+  })
 
   const excluirTipo = (tipo) => {
     if (TIPOS_PADRAO.includes(tipo)) return
@@ -63,6 +43,42 @@ export default function Beneficiarios() {
     }
   }
 
+  const atualizarCampo = (campo, valor) => {
+    setForm((atual) => ({ ...atual, [campo]: valor }))
+  }
+
+  const resetarFormulario = () => {
+    setForm({ nome: '', tipo: 'FAMILIA', comunidade: '', projeto: '', telefone: '', status: 'ATIVO', termoLgpd: false, atendimentos: 0 })
+    setModoFormulario('novo')
+    setEditandoId(null)
+  }
+
+  const iniciarEdicao = (beneficiario) => {
+    setModoFormulario('edicao')
+    setEditandoId(beneficiario.id)
+    setForm({ ...beneficiario })
+  }
+
+  const salvarBeneficiario = (e) => {
+    e.preventDefault()
+    if (!form.nome.trim() || !form.comunidade.trim() || !form.projeto.trim()) return
+
+    if (modoFormulario === 'edicao' && editandoId) {
+      setBeneficiarios((atual) => atual.map((b) => (b.id === editandoId ? { ...b, ...form, nome: form.nome.trim() } : b)))
+      resetarFormulario()
+      return
+    }
+
+    const novo = {
+      ...form,
+      id: Math.max(0, ...beneficiarios.map((b) => b.id)) + 1,
+      nome: form.nome.trim(),
+    }
+
+    setBeneficiarios((atual) => [novo, ...atual])
+    resetarFormulario()
+  }
+
   return (
     <div className="mod-beneficiarios animate-fade-in">
       <div className="page-header">
@@ -70,8 +86,35 @@ export default function Beneficiarios() {
           <h1 className="page-title">Beneficiários</h1>
           <p className="page-subtitle">Cadastro de famílias, grupos e pessoas atendidas pelos projetos sociais</p>
         </div>
-        <button className="btn btn-primary" onClick={() => navigate('/beneficiarios/novo')}><Plus size={16} /> Novo beneficiário</button>
+        <button className="btn btn-primary" onClick={resetarFormulario}><Plus size={16} /> Novo beneficiário</button>
       </div>
+
+      <form className="card" style={{ marginBottom: 20 }} onSubmit={salvarBeneficiario}>
+        <h3 style={{ marginBottom: 12 }}>{modoFormulario === 'edicao' ? 'Alterar beneficiário' : 'Cadastrar beneficiário'}</h3>
+        <div className="grid-4" style={{ marginBottom: 12 }}>
+          <input value={form.nome} onChange={(e) => atualizarCampo('nome', e.target.value)} placeholder="Nome do beneficiário" required />
+          <input value={form.comunidade} onChange={(e) => atualizarCampo('comunidade', e.target.value)} placeholder="Comunidade" required />
+          <input value={form.projeto} onChange={(e) => atualizarCampo('projeto', e.target.value)} placeholder="Projeto" required />
+          <input value={form.telefone} onChange={(e) => atualizarCampo('telefone', e.target.value)} placeholder="Telefone" />
+        </div>
+        <div className="grid-4" style={{ marginBottom: 12 }}>
+          <select value={form.tipo} onChange={(e) => atualizarCampo('tipo', e.target.value)}>
+            {Object.entries(tipoLabel).map(([valor, label]) => <option value={valor} key={valor}>{label}</option>)}
+          </select>
+          <select value={form.status} onChange={(e) => atualizarCampo('status', e.target.value)}>
+            <option value="ATIVO">Ativo</option>
+            <option value="ACOMPANHAMENTO">Acompanhamento</option>
+          </select>
+          <input type="number" min="0" value={form.atendimentos} onChange={(e) => atualizarCampo('atendimentos', Number(e.target.value))} placeholder="Atendimentos" />
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14 }}>
+            <input type="checkbox" checked={form.termoLgpd} onChange={(e) => atualizarCampo('termoLgpd', e.target.checked)} /> Termo LGPD assinado
+          </label>
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button type="submit" className="btn btn-primary">{modoFormulario === 'edicao' ? 'Salvar alterações' : 'Cadastrar beneficiário'}</button>
+          {modoFormulario === 'edicao' && <button type="button" className="btn btn-ghost" onClick={resetarFormulario}>Cancelar</button>}
+        </div>
+      </form>
 
       <div className="grid-4" style={{ marginBottom: 24 }}>
         <div className="stat-card mod-beneficiarios"><div className="stat-icon"><UsersRound size={20} /></div><div><div className="stat-label">Beneficiários</div><div className="stat-value">{beneficiarios.length}</div></div></div>
@@ -129,7 +172,7 @@ export default function Beneficiarios() {
                   <td><span className="badge badge-green">{b.status === 'ATIVO' ? 'Ativo' : 'Acompanhamento'}</span></td>
                   <td>
                     <div style={{ display: 'flex', gap: 6 }}>
-                      <button className="btn btn-ghost btn-icon btn-sm" onClick={() => navigate(`/beneficiarios/${b.id}/editar`)} title="Alterar cadastro"><Pencil size={15} /></button>
+                      <button className="btn btn-ghost btn-icon btn-sm" onClick={() => iniciarEdicao(b)} title="Alterar cadastro"><Pencil size={15} /></button>
                       <button className="btn btn-ghost btn-icon btn-sm" onClick={() => remover(b.id)} title="Remover beneficiário"><Trash2 size={15} /></button>
                     </div>
                   </td>
