@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   DollarSign, TrendingUp, TrendingDown, Plus, ArrowUpRight, ArrowDownRight,
-  Search, Landmark, Wallet, ReceiptText, FileCheck2, ClipboardCheck,
-  AlertTriangle, Download, Printer, CheckCircle2, Clock, XCircle
+  Search, Landmark, Wallet, ReceiptText, ClipboardCheck,
+  AlertTriangle, Download, Printer, CheckCircle2, Clock, XCircle,
+  Eye, Trash2
 } from 'lucide-react'
 import {
   PieChart, Pie, Cell, Tooltip, ResponsiveContainer, AreaChart, Area,
@@ -11,7 +12,7 @@ import {
 } from 'recharts'
 import { listTransacoesStorage } from './transacoesStorage'
 
-const fmt = (v) => `R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
+const fmt = (v) => `R$ ${Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
 
 const contas = [
   { id: 1, nome: 'Conta principal ONG', tipo: 'Conta corrente', banco: 'Banco do Brasil', saldoInicial: 8000, saldoAtual: 16420, responsavel: 'Tesouraria', status: 'ATIVA' },
@@ -19,9 +20,6 @@ const contas = [
   { id: 3, nome: 'Projeto Horta Solidária', tipo: 'Conta por projeto', banco: 'Caixa', saldoInicial: 0, saldoAtual: 11500, responsavel: 'Coordenação de Projetos', status: 'ATIVA' },
   { id: 4, nome: 'Carteira PIX Doações', tipo: 'Carteira digital', banco: 'PIX', saldoInicial: 0, saldoAtual: 2450, responsavel: 'Diretoria', status: 'ATIVA' },
 ]
-
-
-const STORAGE_KEY = 'financeiro_transacoes'
 
 const transacoesSeed = [
   { id: 1, descricao: 'Doação — Maria Silva', tipo: 'RECEITA', valor: 500, categoria: 'Doações', data: '2026-04-12', vencimento: '2026-04-12', pagamento: '2026-04-12', status: 'RECEBIDA', projeto: 'Fundo Geral', conta: 'Carteira PIX Doações', origem: 'Pessoa física', forma: 'PIX', comprovante: 'VALIDO' },
@@ -85,6 +83,18 @@ const statusConfig = {
   CANCELADA: { label: 'Cancelada', badge: 'badge-gray', icon: XCircle },
 }
 
+function baixarArquivoTexto(nomeArquivo, conteudo) {
+  const blob = new Blob([conteudo], { type: 'text/plain;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = nomeArquivo
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  URL.revokeObjectURL(url)
+}
+
 export default function Financeiro() {
   const [aba, setAba] = useState('visao')
   const [busca, setBusca] = useState('')
@@ -106,14 +116,29 @@ export default function Financeiro() {
     return matchBusca && matchProjeto && matchTipo
   }), [busca, projetoFiltro, tipoFiltro, transacoes])
 
-  const receitas = transacoes.filter((t) => t.tipo === 'RECEITA' && t.status === 'RECEBIDA').reduce((s, t) => s + t.valor, 0)
-  const receitasPrevistas = transacoes.filter((t) => t.tipo === 'RECEITA' && t.status === 'PREVISTA').reduce((s, t) => s + t.valor, 0)
-  const despesas = transacoes.filter((t) => t.tipo === 'DESPESA' && t.status === 'PAGA').reduce((s, t) => s + t.valor, 0)
-  const despesasAbertas = transacoes.filter((t) => t.tipo === 'DESPESA' && t.status !== 'PAGA').reduce((s, t) => s + t.valor, 0)
-  const saldo = contas.reduce((s, conta) => s + conta.saldoAtual, 0)
+  const receitas = transacoes.filter((t) => t.tipo === 'RECEITA' && t.status === 'RECEBIDA').reduce((s, t) => s + Number(t.valor || 0), 0)
+  const receitasPrevistas = transacoes.filter((t) => t.tipo === 'RECEITA' && t.status === 'PREVISTA').reduce((s, t) => s + Number(t.valor || 0), 0)
+  const despesas = transacoes.filter((t) => t.tipo === 'DESPESA' && t.status === 'PAGA').reduce((s, t) => s + Number(t.valor || 0), 0)
+  const despesasAbertas = transacoes.filter((t) => t.tipo === 'DESPESA' && t.status !== 'PAGA').reduce((s, t) => s + Number(t.valor || 0), 0)
+  const saldo = contas.reduce((s, conta) => s + Number(conta.saldoAtual || 0), 0)
   const pendentes = comprovantesState.filter((c) => c.status === 'PENDENTE').length
-  const handleVerComprovante = (doc) => window.alert(`Visualizando ${doc.documento}`)
-  const handleValidarComprovante = (doc) => setComprovantesState((prev) => prev.map((item) => item.id === doc.id ? { ...item, status: 'VALIDO', validador: 'Tesouraria' } : item))
+
+  const handleVerComprovante = (doc) => {
+    window.alert(`Comprovante: ${doc.documento}\nTipo: ${doc.tipo}\nLançamento: ${doc.lancamento}\nProjeto: ${doc.projeto}\nValor: ${fmt(doc.valor)}\nStatus: ${doc.status}`)
+  }
+
+  const handleValidarComprovante = (doc) => {
+    setComprovantesState((prev) => prev.map((item) => item.id === doc.id ? { ...item, status: 'VALIDO', validador: 'Admin' } : item))
+  }
+
+  const handleBaixarComprovante = (doc) => {
+    baixarArquivoTexto(doc.documento || `comprovante-${doc.id}.txt`, JSON.stringify(doc, null, 2))
+  }
+
+  const handleExcluirComprovante = (doc) => {
+    if (!window.confirm(`Deseja excluir o comprovante "${doc.documento}"?`)) return
+    setComprovantesState((prev) => prev.filter((item) => item.id !== doc.id))
+  }
 
   return (
     <div className="mod-financeiro animate-fade-in">
@@ -130,11 +155,7 @@ export default function Financeiro() {
       <div className="card no-print" style={{ marginBottom: 20 }}>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
           {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              className={`btn btn-sm ${aba === tab.id ? 'btn-primary' : 'btn-outline'}`}
-              onClick={() => setAba(tab.id)}
-            >
+            <button key={tab.id} className={`btn btn-sm ${aba === tab.id ? 'btn-primary' : 'btn-outline'}`} onClick={() => setAba(tab.id)}>
               {tab.label}
             </button>
           ))}
@@ -219,7 +240,15 @@ export default function Financeiro() {
       {aba === 'despesas' && <TransactionsTable transacoes={transacoesFiltradas.filter((t) => t.tipo === 'DESPESA')} title="Despesas" />}
       {aba === 'contas' && <AccountsTable contas={contas} />}
       {aba === 'orcamentos' && <BudgetsTable orcamentos={orcamentos} />}
-      {aba === 'comprovantes' && <AttachmentsTable comprovantes={comprovantesState} onView={handleVerComprovante} onValidate={handleValidarComprovante} />}
+      {aba === 'comprovantes' && (
+        <AttachmentsTable
+          comprovantes={comprovantesState}
+          onView={handleVerComprovante}
+          onValidate={handleValidarComprovante}
+          onDownload={handleBaixarComprovante}
+          onDelete={handleExcluirComprovante}
+        />
+      )}
       {aba === 'prestacao' && <AccountabilityReport transacoes={transacoes} orcamentos={orcamentos} comprovantes={comprovantesState} />}
     </div>
   )
@@ -260,16 +289,7 @@ function TransactionsTable({ transacoes, title }) {
       <div className="table-wrap">
         <table>
           <thead>
-            <tr>
-              <th>Descrição</th>
-              <th>Projeto</th>
-              <th>Categoria</th>
-              <th>Conta</th>
-              <th>Vencimento</th>
-              <th>Status</th>
-              <th>Comprovante</th>
-              <th style={{ textAlign: 'right' }}>Valor</th>
-            </tr>
+            <tr><th>Descrição</th><th>Projeto</th><th>Categoria</th><th>Conta</th><th>Vencimento</th><th>Status</th><th>Comprovante</th><th style={{ textAlign: 'right' }}>Valor</th></tr>
           </thead>
           <tbody>
             {transacoes.map((t) => {
@@ -280,14 +300,9 @@ function TransactionsTable({ transacoes, title }) {
                   <td>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                       <div style={{ width: 32, height: 32, borderRadius: 8, background: t.tipo === 'RECEITA' ? 'var(--green-50)' : 'var(--red-50)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        {t.tipo === 'RECEITA'
-                          ? <ArrowUpRight size={15} color="var(--green-600)" />
-                          : <ArrowDownRight size={15} color="var(--red-600)" />}
+                        {t.tipo === 'RECEITA' ? <ArrowUpRight size={15} color="var(--green-600)" /> : <ArrowDownRight size={15} color="var(--red-600)" />}
                       </div>
-                      <div>
-                        <span style={{ fontWeight: 600 }}>{t.descricao}</span>
-                        <div style={{ fontSize: 12, color: 'var(--gray-400)' }}>{new Date(`${t.data}T12:00:00`).toLocaleDateString('pt-BR')} • {t.forma}</div>
-                      </div>
+                      <div><span style={{ fontWeight: 600 }}>{t.descricao}</span><div style={{ fontSize: 12, color: 'var(--gray-400)' }}>{new Date(`${t.data}T12:00:00`).toLocaleDateString('pt-BR')} • {t.forma}</div></div>
                     </div>
                   </td>
                   <td>{t.projeto}</td>
@@ -296,9 +311,7 @@ function TransactionsTable({ transacoes, title }) {
                   <td>{new Date(`${t.vencimento}T12:00:00`).toLocaleDateString('pt-BR')}</td>
                   <td><span className={`badge ${cfg.badge}`}><Icon size={11} /> {cfg.label}</span></td>
                   <td><span className={`badge ${t.comprovante === 'VALIDO' ? 'badge-green' : 'badge-yellow'}`}>{t.comprovante === 'VALIDO' ? 'Validado' : 'Pendente'}</span></td>
-                  <td style={{ textAlign: 'right', fontWeight: 700, color: t.tipo === 'RECEITA' ? 'var(--green-600)' : 'var(--red-600)' }}>
-                    {t.tipo === 'RECEITA' ? '+' : '-'}{fmt(t.valor)}
-                  </td>
+                  <td style={{ textAlign: 'right', fontWeight: 700, color: t.tipo === 'RECEITA' ? 'var(--green-600)' : 'var(--red-600)' }}>{t.tipo === 'RECEITA' ? '+' : '-'}{fmt(t.valor)}</td>
                 </tr>
               )
             })}
@@ -316,19 +329,7 @@ function AccountsTable({ contas }) {
       <div className="table-wrap">
         <table>
           <thead><tr><th>Conta</th><th>Tipo</th><th>Banco</th><th>Saldo inicial</th><th>Saldo atual</th><th>Responsável</th><th>Status</th></tr></thead>
-          <tbody>
-            {contas.map((conta) => (
-              <tr key={conta.id}>
-                <td><strong>{conta.nome}</strong></td>
-                <td><span className="badge badge-blue"><Landmark size={11} /> {conta.tipo}</span></td>
-                <td>{conta.banco}</td>
-                <td>{fmt(conta.saldoInicial)}</td>
-                <td><strong>{fmt(conta.saldoAtual)}</strong></td>
-                <td>{conta.responsavel}</td>
-                <td><span className="badge badge-green">Ativa</span></td>
-              </tr>
-            ))}
-          </tbody>
+          <tbody>{contas.map((conta) => <tr key={conta.id}><td><strong>{conta.nome}</strong></td><td><span className="badge badge-blue"><Landmark size={11} /> {conta.tipo}</span></td><td>{conta.banco}</td><td>{fmt(conta.saldoInicial)}</td><td><strong>{fmt(conta.saldoAtual)}</strong></td><td>{conta.responsavel}</td><td><span className="badge badge-green">Ativa</span></td></tr>)}</tbody>
         </table>
       </div>
     </div>
@@ -337,7 +338,6 @@ function AccountsTable({ contas }) {
 
 function BudgetsTable({ orcamentos }) {
   const chartData = orcamentos.map((item) => ({ categoria: item.categoria, aprovado: item.aprovado, realizado: item.realizado }))
-
   return (
     <div style={{ display: 'grid', gap: 20 }}>
       <div className="card">
@@ -354,41 +354,14 @@ function BudgetsTable({ orcamentos }) {
           </BarChart>
         </ResponsiveContainer>
       </div>
-
       <div className="card">
-        <div className="table-wrap">
-          <table>
-            <thead><tr><th>Projeto</th><th>Categoria</th><th>Previsto</th><th>Aprovado</th><th>Realizado</th><th>Saldo</th><th>Execução</th></tr></thead>
-            <tbody>
-              {orcamentos.map((item) => {
-                const saldo = item.aprovado - item.realizado
-                const pct = item.aprovado ? Math.round((item.realizado / item.aprovado) * 100) : 0
-                return (
-                  <tr key={`${item.projeto}-${item.categoria}`}>
-                    <td>{item.projeto}</td>
-                    <td><strong>{item.categoria}</strong></td>
-                    <td>{fmt(item.previsto)}</td>
-                    <td>{fmt(item.aprovado)}</td>
-                    <td>{fmt(item.realizado)}</td>
-                    <td style={{ color: saldo >= 0 ? 'var(--green-600)' : 'var(--red-600)', fontWeight: 700 }}>{fmt(saldo)}</td>
-                    <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <div className="progress" style={{ width: 90 }}><div className="progress-bar" style={{ width: `${Math.min(100, pct)}%`, background: pct > 100 ? 'var(--red-500)' : 'var(--green-500)' }} /></div>
-                        <strong>{pct}%</strong>
-                      </div>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
+        <div className="table-wrap"><table><thead><tr><th>Projeto</th><th>Categoria</th><th>Previsto</th><th>Aprovado</th><th>Realizado</th><th>Saldo</th><th>Execução</th></tr></thead><tbody>{orcamentos.map((item) => { const saldo = item.aprovado - item.realizado; const pct = item.aprovado ? Math.round((item.realizado / item.aprovado) * 100) : 0; return <tr key={`${item.projeto}-${item.categoria}`}><td>{item.projeto}</td><td><strong>{item.categoria}</strong></td><td>{fmt(item.previsto)}</td><td>{fmt(item.aprovado)}</td><td>{fmt(item.realizado)}</td><td style={{ color: saldo >= 0 ? 'var(--green-600)' : 'var(--red-600)', fontWeight: 700 }}>{fmt(saldo)}</td><td><div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><div className="progress" style={{ width: 90 }}><div className="progress-bar" style={{ width: `${Math.min(100, pct)}%`, background: pct > 100 ? 'var(--red-500)' : 'var(--green-500)' }} /></div><strong>{pct}%</strong></div></td></tr> })}</tbody></table></div>
       </div>
     </div>
   )
 }
 
-function AttachmentsTable({ comprovantes, onView, onValidate }) {
+function AttachmentsTable({ comprovantes, onView, onValidate, onDownload, onDelete }) {
   return (
     <div className="card">
       <CardTitle title="Comprovantes financeiros" subtitle="Notas fiscais, recibos, PIX, contratos e evidências" />
@@ -405,9 +378,17 @@ function AttachmentsTable({ comprovantes, onView, onValidate }) {
                 <td>{fmt(doc.valor)}</td>
                 <td><span className={`badge ${doc.status === 'VALIDO' ? 'badge-green' : 'badge-yellow'}`}>{doc.status === 'VALIDO' ? 'Validado' : 'Pendente'}</span></td>
                 <td>{doc.validador}</td>
-                <td><button className="btn btn-sm btn-outline">Ver e validar</button></td>
+                <td>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                    <button className="btn btn-sm btn-outline" onClick={() => onView(doc)} title="Ver comprovante"><Eye size={13} /> Ver</button>
+                    {doc.status !== 'VALIDO' && <button className="btn btn-sm btn-outline" onClick={() => onValidate(doc)} title="Validar comprovante"><CheckCircle2 size={13} /> Validar</button>}
+                    <button className="btn btn-sm btn-outline" onClick={() => onDownload(doc)} title="Baixar comprovante"><Download size={13} /> Baixar</button>
+                    <button className="btn btn-sm btn-outline" onClick={() => onDelete(doc)} title="Excluir comprovante"><Trash2 size={13} /> Excluir</button>
+                  </div>
+                </td>
               </tr>
             ))}
+            {comprovantes.length === 0 && <tr><td colSpan="8" style={{ textAlign: 'center', color: 'var(--gray-400)' }}>Nenhum comprovante cadastrado.</td></tr>}
           </tbody>
         </table>
       </div>
@@ -416,78 +397,30 @@ function AttachmentsTable({ comprovantes, onView, onValidate }) {
 }
 
 function AccountabilityReport({ transacoes, orcamentos, comprovantes }) {
-  const receitas = transacoes.filter((t) => t.tipo === 'RECEITA' && t.status === 'RECEBIDA').reduce((s, t) => s + t.valor, 0)
-  const despesas = transacoes.filter((t) => t.tipo === 'DESPESA' && t.status === 'PAGA').reduce((s, t) => s + t.valor, 0)
+  const receitas = transacoes.filter((t) => t.tipo === 'RECEITA' && t.status === 'RECEBIDA').reduce((s, t) => s + Number(t.valor || 0), 0)
+  const despesas = transacoes.filter((t) => t.tipo === 'DESPESA' && t.status === 'PAGA').reduce((s, t) => s + Number(t.valor || 0), 0)
   const pendencias = comprovantes.filter((c) => c.status === 'PENDENTE').length
 
   return (
     <div className="mod-financeiro">
       <div className="page-header no-print">
-        <div>
-          <h1 className="page-title">Prestação de contas</h1>
-          <p className="page-subtitle">Relatório financeiro consolidado por projeto, período e fonte de recurso</p>
-        </div>
+        <div><h1 className="page-title">Prestação de contas</h1><p className="page-subtitle">Relatório financeiro consolidado por projeto, período e fonte de recurso</p></div>
         <button className="btn btn-primary" onClick={() => window.print()}><Printer size={16} /> Gerar PDF</button>
       </div>
-
       <section className="card" style={{ marginBottom: 24, borderLeft: '5px solid var(--green-500)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 20, alignItems: 'flex-start' }}>
-          <div>
-            <div className="badge badge-green" style={{ marginBottom: 12 }}>Relatório financeiro</div>
-            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 28, color: 'var(--gray-900)' }}>Prestação de Contas — ONG Platform</h2>
-            <p style={{ color: 'var(--gray-500)', maxWidth: 760, marginTop: 8 }}>Documento consolidado com receitas, despesas, orçamento executado, comprovantes e pendências para diretoria, conselho fiscal, parceiros e financiadores.</p>
-          </div>
-          <div style={{ textAlign: 'right', color: 'var(--gray-400)', fontSize: 13 }}>
-            <strong style={{ color: 'var(--gray-700)' }}>Período:</strong> Abril/2026<br />
-            <strong style={{ color: 'var(--gray-700)' }}>Gerado em:</strong> {new Date().toLocaleDateString('pt-BR')}
-          </div>
+          <div><div className="badge badge-green" style={{ marginBottom: 12 }}>Relatório financeiro</div><h2 style={{ fontFamily: 'var(--font-display)', fontSize: 28, color: 'var(--gray-900)' }}>Prestação de Contas — ONG Platform</h2><p style={{ color: 'var(--gray-500)', maxWidth: 760, marginTop: 8 }}>Documento consolidado com receitas, despesas, orçamento executado, comprovantes e pendências.</p></div>
+          <div style={{ textAlign: 'right', color: 'var(--gray-400)', fontSize: 13 }}><strong style={{ color: 'var(--gray-700)' }}>Período:</strong> Abril/2026<br /><strong style={{ color: 'var(--gray-700)' }}>Gerado em:</strong> {new Date().toLocaleDateString('pt-BR')}</div>
         </div>
       </section>
-
       <div className="grid-4" style={{ marginBottom: 24 }}>
         <StatCard mod="mod-financeiro" icon={TrendingUp} label="Receitas recebidas" value={fmt(receitas)} />
         <StatCard mod="mod-pessoas" icon={TrendingDown} label="Despesas pagas" value={fmt(despesas)} />
         <StatCard mod="mod-dashboard" icon={Wallet} label="Saldo do período" value={fmt(receitas - despesas)} />
         <StatCard mod="mod-projetos" icon={AlertTriangle} label="Pendências" value={String(pendencias)} />
       </div>
-
-      <div className="card" style={{ marginBottom: 24 }}>
-        <CardTitle title="Resumo por categoria orçamentária" subtitle="Valores previstos, aprovados, realizados e saldo" />
-        <div className="table-wrap">
-          <table>
-            <thead><tr><th>Projeto</th><th>Categoria</th><th>Aprovado</th><th>Realizado</th><th>Saldo</th></tr></thead>
-            <tbody>
-              {orcamentos.map((item) => (
-                <tr key={`${item.projeto}-${item.categoria}-report`}>
-                  <td>{item.projeto}</td>
-                  <td>{item.categoria}</td>
-                  <td>{fmt(item.aprovado)}</td>
-                  <td>{fmt(item.realizado)}</td>
-                  <td>{fmt(item.aprovado - item.realizado)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <div className="card">
-        <CardTitle title="Pendências de comprovação" subtitle="Itens que precisam de validação antes do fechamento" />
-        <div style={{ display: 'grid', gap: 10 }}>
-          {comprovantes.filter((c) => c.status === 'PENDENTE').map((c) => (
-            <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 16, padding: 12, border: '1px solid var(--gray-100)', borderRadius: 'var(--radius-md)' }}>
-              <div><strong>{c.lancamento}</strong><div style={{ color: 'var(--gray-400)', fontSize: 12 }}>{c.projeto} • {c.tipo}</div></div>
-              <div style={{ fontWeight: 700 }}>{fmt(c.valor)}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div style={{ marginTop: 36, display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 20 }}>
-        {['Presidência', 'Tesouraria', 'Conselho Fiscal'].map((assinatura) => (
-          <div key={assinatura} style={{ borderTop: '1px solid var(--gray-300)', textAlign: 'center', paddingTop: 8, color: 'var(--gray-500)', fontSize: 13 }}>{assinatura}</div>
-        ))}
-      </div>
+      <div className="card" style={{ marginBottom: 24 }}><CardTitle title="Resumo por categoria orçamentária" subtitle="Valores previstos, aprovados, realizados e saldo" /><div className="table-wrap"><table><thead><tr><th>Projeto</th><th>Categoria</th><th>Aprovado</th><th>Realizado</th><th>Saldo</th></tr></thead><tbody>{orcamentos.map((item) => <tr key={`${item.projeto}-${item.categoria}-report`}><td>{item.projeto}</td><td>{item.categoria}</td><td>{fmt(item.aprovado)}</td><td>{fmt(item.realizado)}</td><td>{fmt(item.aprovado - item.realizado)}</td></tr>)}</tbody></table></div></div>
+      <div className="card"><CardTitle title="Pendências de comprovação" subtitle="Itens que precisam de validação antes do fechamento" /><div style={{ display: 'grid', gap: 10 }}>{comprovantes.filter((c) => c.status === 'PENDENTE').map((c) => <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 16, padding: 12, border: '1px solid var(--gray-100)', borderRadius: 'var(--radius-md)' }}><div><strong>{c.lancamento}</strong><div style={{ color: 'var(--gray-400)', fontSize: 12 }}>{c.projeto} • {c.tipo}</div></div><div style={{ fontWeight: 700 }}>{fmt(c.valor)}</div></div>)}</div></div>
     </div>
   )
 }
