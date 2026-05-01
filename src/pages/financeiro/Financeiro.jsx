@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   DollarSign, TrendingUp, TrendingDown, Plus, ArrowUpRight, ArrowDownRight,
@@ -19,6 +19,9 @@ const contas = [
   { id: 3, nome: 'Projeto Horta Solidária', tipo: 'Conta por projeto', banco: 'Caixa', saldoInicial: 0, saldoAtual: 11500, responsavel: 'Coordenação de Projetos', status: 'ATIVA' },
   { id: 4, nome: 'Carteira PIX Doações', tipo: 'Carteira digital', banco: 'PIX', saldoInicial: 0, saldoAtual: 2450, responsavel: 'Diretoria', status: 'ATIVA' },
 ]
+
+
+const STORAGE_KEY = 'financeiro_transacoes'
 
 const transacoesSeed = [
   { id: 1, descricao: 'Doação — Maria Silva', tipo: 'RECEITA', valor: 500, categoria: 'Doações', data: '2026-04-12', vencimento: '2026-04-12', pagamento: '2026-04-12', status: 'RECEBIDA', projeto: 'Fundo Geral', conta: 'Carteira PIX Doações', origem: 'Pessoa física', forma: 'PIX', comprovante: 'VALIDO' },
