@@ -15,6 +15,7 @@ import Beneficiarios from './pages/beneficiarios/Beneficiarios'
 import Documentos from './pages/documentos/Documentos'
 import Captacao from './pages/captacao/Captacao'
 import Relatorios from './pages/relatorios/Relatorios'
+import BeneficiarioCadastroPage from './pages/beneficiarios/BeneficiarioCadastroPage'
 import { NovaPessoaPage, NovaTransacaoPage, NovoEnvioPage, EditarInstitucionalPage } from './pages/cadastros/Cadastros'
 import NovoProjetoPage from './pages/projetos/NovoProjetoPage'
 import { Search, Bell, Settings } from 'lucide-react'
@@ -62,6 +63,8 @@ function AppShell({ user, onLogout }) {
           <Route path="/pessoas"       element={<Pessoas />} />
           <Route path="/pessoas/nova"  element={<NovaPessoaPage />} />
           <Route path="/beneficiarios" element={<Beneficiarios />} />
+          <Route path="/beneficiarios/novo" element={<BeneficiarioCadastroPage />} />
+          <Route path="/beneficiarios/:id/editar" element={<BeneficiarioCadastroPage />} />
           <Route path="/financeiro"    element={<Financeiro />} />
           <Route path="/financeiro/nova" element={<NovaTransacaoPage />} />
           <Route path="/projetos"      element={<Projetos />} />
