@@ -14,6 +14,7 @@ const normalizarTipo = (tipo) => tipo.trim().toUpperCase().replaceAll(' ', '_')
 
 export default function Beneficiarios() {
   const [beneficiarios, setBeneficiarios] = useState(seedBeneficiarios)
+  const [tipos, setTipos] = useState(tiposIniciais)
   const [busca, setBusca] = useState('')
   const [tipos, setTipos] = useState(() => listarTipos())
   const [novoTipo, setNovoTipo] = useState('')
@@ -67,15 +68,55 @@ export default function Beneficiarios() {
     setForm((atual) => (atual.tipo === tipo ? { ...atual, tipo: 'FAMILIA' } : atual))
   }
 
+  const comunidades = useMemo(() => new Set(beneficiarios.map((b) => b.comunidade)).size, [beneficiarios])
   const filtrados = useMemo(() => beneficiarios.filter((b) => {
-    const termo = busca.toLowerCase()
-    return b.nome.toLowerCase().includes(termo) || b.comunidade.toLowerCase().includes(termo) || b.projeto.toLowerCase().includes(termo)
+    const t = busca.toLowerCase()
+    return b.nome.toLowerCase().includes(t) || b.comunidade.toLowerCase().includes(t) || b.projeto.toLowerCase().includes(t)
   }), [beneficiarios, busca])
 
-  const remover = (id) => {
-    if (confirm('Deseja remover este beneficiário da listagem?')) {
-      setBeneficiarios((atual) => atual.filter((b) => b.id !== id))
+  const atualizar = (campo, valor) => setForm((a) => ({ ...a, [campo]: valor }))
+
+  const abrirNovo = () => {
+    setModoModal('novo')
+    setSelecionado(null)
+    setForm({ nome: '', tipo: 'FAMILIA', comunidade: '', projeto: '', telefone: '', status: 'ATIVO', termoLgpd: false, atendimentos: 0 })
+    setAberto(true)
+  }
+
+  const visualizar = (b) => {
+    setModoModal('visualizar')
+    setSelecionado(b)
+    setForm({ ...b })
+    setAberto(true)
+  }
+
+  const editar = (b) => {
+    setModoModal('editar')
+    setSelecionado(b)
+    setForm({ ...b })
+    setAberto(true)
+  }
+
+  const adicionarTipo = () => {
+    const tipo = novoTipo.trim().toUpperCase().replaceAll(' ', '_')
+    if (!tipo || tipos.includes(tipo)) return
+    setTipos((atual) => [...atual, tipo])
+    setForm((atual) => ({ ...atual, tipo }))
+    setNovoTipo('')
+  }
+
+  const salvar = (e) => {
+    e.preventDefault()
+    if (modoModal === 'visualizar') return
+
+    if (modoModal === 'editar' && selecionado) {
+      setBeneficiarios((atual) => atual.map((b) => (b.id === selecionado.id ? { ...form, id: b.id, atendimentos: Number(form.atendimentos) || 0 } : b)))
+    } else {
+      const novo = { ...form, id: Math.max(0, ...beneficiarios.map((b) => b.id)) + 1, atendimentos: Number(form.atendimentos) || 0 }
+      setBeneficiarios((atual) => [novo, ...atual])
     }
+
+    setAberto(false)
   }
 
   const atualizarCampo = (campo, valor) => {
@@ -120,7 +161,7 @@ export default function Beneficiarios() {
       <div className="page-header">
         <div>
           <h1 className="page-title">Beneficiários</h1>
-          <p className="page-subtitle">Cadastro de famílias, grupos e pessoas atendidas pelos projetos sociais</p>
+          <p className="page-subtitle">Status dos atendimentos e lista de cadastrados</p>
         </div>
         <button className="btn btn-primary" onClick={resetarFormulario}><Plus size={16} /> Novo beneficiário</button>
       </div>
@@ -162,7 +203,7 @@ export default function Beneficiarios() {
       <div className="card" style={{ marginBottom: 20 }}>
         <div style={{ position: 'relative' }}>
           <Search size={15} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--gray-400)' }} />
-          <input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar por nome, comunidade ou projeto…" style={{ paddingLeft: 38 }} />
+          <input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Busca rápida por nome, comunidade ou projeto" style={{ paddingLeft: 38 }} />
         </div>
       </div>
       <div className="card" style={{ marginBottom: 20 }}>
@@ -195,7 +236,7 @@ export default function Beneficiarios() {
       <div className="card">
         <div className="table-wrap">
           <table>
-            <thead><tr><th>Beneficiário</th><th>Tipo</th><th>Comunidade</th><th>Projeto</th><th>Atendimentos</th><th>LGPD</th><th>Status</th><th></th></tr></thead>
+            <thead><tr><th>Beneficiário</th><th>Tipo</th><th>Comunidade</th><th>Projeto</th><th>Status</th><th></th></tr></thead>
             <tbody>
               {filtrados.map((b) => (
                 <tr key={b.id}>
@@ -203,8 +244,6 @@ export default function Beneficiarios() {
                   <td><span className="badge badge-blue">{formatarTipo(b.tipo)}</span></td>
                   <td>{b.comunidade}</td>
                   <td>{b.projeto}</td>
-                  <td><strong>{b.atendimentos}</strong></td>
-                  <td><span className={`badge ${b.termoLgpd ? 'badge-green' : 'badge-yellow'}`}>{b.termoLgpd ? 'Assinado' : 'Pendente'}</span></td>
                   <td><span className="badge badge-green">{b.status === 'ATIVO' ? 'Ativo' : 'Acompanhamento'}</span></td>
                   <td>
                     <div style={{ display: 'flex', gap: 6 }}>
@@ -218,6 +257,35 @@ export default function Beneficiarios() {
           </table>
         </div>
       </div>
+
+      {aberto && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.35)', display: 'grid', placeItems: 'center', zIndex: 50 }}>
+          <form className="card" onSubmit={salvar} style={{ width: 'min(760px, 92vw)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+              <h3>{modoModal === 'novo' ? 'Cadastrar beneficiário' : modoModal === 'editar' ? 'Alterar cadastro' : 'Visualizar beneficiário'}</h3>
+              <button type="button" className="btn btn-ghost btn-icon" onClick={() => setAberto(false)}><X size={16} /></button>
+            </div>
+            <div className="grid-4" style={{ marginBottom: 10 }}>
+              <input required disabled={modoModal === 'visualizar'} value={form.nome} onChange={(e) => atualizar('nome', e.target.value)} placeholder="Nome" />
+              <select disabled={modoModal === 'visualizar'} value={form.tipo} onChange={(e) => atualizar('tipo', e.target.value)}>{tipos.map((t) => <option key={t} value={t}>{t}</option>)}</select>
+              <input required disabled={modoModal === 'visualizar'} value={form.comunidade} onChange={(e) => atualizar('comunidade', e.target.value)} placeholder="Comunidade" />
+              <input required disabled={modoModal === 'visualizar'} value={form.projeto} onChange={(e) => atualizar('projeto', e.target.value)} placeholder="Projeto" />
+            </div>
+            {modoModal !== 'visualizar' && (
+              <div className="grid-4" style={{ marginBottom: 10 }}>
+                <input value={novoTipo} onChange={(e) => setNovoTipo(e.target.value)} placeholder="Novo tipo" />
+                <button type="button" className="btn btn-outline" onClick={adicionarTipo}><Plus size={14} /> Adicionar tipo</button>
+                <input value={form.telefone} onChange={(e) => atualizar('telefone', e.target.value)} placeholder="Telefone" />
+                <input type="number" min="0" value={form.atendimentos} onChange={(e) => atualizar('atendimentos', e.target.value)} placeholder="Atendimentos" />
+              </div>
+            )}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <label style={{ display: 'flex', gap: 8 }}><input disabled={modoModal === 'visualizar'} type="checkbox" checked={form.termoLgpd} onChange={(e) => atualizar('termoLgpd', e.target.checked)} />Termo LGPD assinado</label>
+              {modoModal !== 'visualizar' && <button className="btn btn-primary" type="submit">Salvar</button>}
+            </div>
+          </form>
+        </div>
+      )}
     </div>
   )
 }
