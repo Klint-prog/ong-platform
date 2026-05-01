@@ -26,21 +26,9 @@ function AppShell({ user, onLogout }) {
   const [perfilDraft, setPerfilDraft] = useState(() => ({
     nome: user?.nome || '',
     fotoUrl: user?.fotoUrl || '',
-    fotoNome: '',
     telefone: user?.telefone || '',
     bio: user?.bio || '',
   }))
-
-  const handleFotoSelecionada = (event) => {
-    const arquivo = event.target.files?.[0]
-    if (!arquivo) return
-
-    setPerfilDraft((draft) => ({
-      ...draft,
-      fotoNome: arquivo.name,
-      fotoUrl: URL.createObjectURL(arquivo),
-    }))
-  }
 
   const avatarInicial = useMemo(() => (perfilDraft?.nome?.charAt(0) || user?.nome?.charAt(0) || 'A'), [perfilDraft?.nome, user?.nome])
 
@@ -94,13 +82,7 @@ function AppShell({ user, onLogout }) {
                 <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 8, color: 'var(--gray-600)' }}>Configurações do usuário</div>
                 <div style={{ display: 'grid', gap: 6 }}>
                   <input value={perfilDraft.nome} onChange={(e) => setPerfilDraft((d) => ({ ...d, nome: e.target.value }))} placeholder="Nome" />
-                  <label className="btn btn-ghost" style={{ justifyContent: 'center' }}>
-                    Adicionar foto
-                    <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFotoSelecionada} />
-                  </label>
-                  <div style={{ fontSize: 11, color: 'var(--gray-500)' }}>
-                    {perfilDraft.fotoNome || 'Nenhuma foto selecionada'}
-                  </div>
+                  <input value={perfilDraft.fotoUrl} onChange={(e) => setPerfilDraft((d) => ({ ...d, fotoUrl: e.target.value }))} placeholder="URL da foto" />
                   <input value={perfilDraft.telefone} onChange={(e) => setPerfilDraft((d) => ({ ...d, telefone: e.target.value }))} placeholder="Telefone" />
                   <textarea value={perfilDraft.bio} onChange={(e) => setPerfilDraft((d) => ({ ...d, bio: e.target.value }))} placeholder="Informações adicionais" rows={3} />
                   <button className="btn btn-primary" onClick={salvarPerfil}>Salvar perfil</button>
