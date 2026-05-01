@@ -48,6 +48,7 @@ export default function Documentos() {
   const [busca, setBusca] = useState('')
   const [docs, setDocs] = useState(docsIniciais)
   const [menuAberto, setMenuAberto] = useState(false)
+  const [previewDoc, setPreviewDoc] = useState(null)
   const uploadArquivoRef = useRef(null)
   const uploadPastaRef = useRef(null)
 
@@ -57,6 +58,7 @@ export default function Documentos() {
   )
 
   const totalPastas = useMemo(() => new Set(docs.map((d) => d.pasta)).size, [docs])
+  const totalPendencias = useMemo(() => docs.filter((d) => d.status === 'PENDENTE_REVISAO' || d.status === 'VENCE_EM_BREVE').length, [docs])
 
   const uploadArquivos = (files) => {
     if (!files || files.length === 0) return
@@ -90,9 +92,14 @@ export default function Documentos() {
       window.alert('Visualização disponível apenas para arquivos enviados nesta sessão.')
       return
     }
+
     const url = URL.createObjectURL(doc.file)
-    window.open(url, '_blank', 'noopener,noreferrer')
-    setTimeout(() => URL.revokeObjectURL(url), 60_000)
+    setPreviewDoc({ nome: doc.nome, url })
+  }
+
+  const fecharPreview = () => {
+    if (previewDoc?.url) URL.revokeObjectURL(previewDoc.url)
+    setPreviewDoc(null)
   }
 
   const baixarDocumento = (doc) => {
@@ -136,7 +143,7 @@ export default function Documentos() {
         <div className="stat-card mod-documentos"><div className="stat-icon"><FileText size={20} /></div><div><div className="stat-label">Arquivos</div><div className="stat-value">{docs.length}</div></div></div>
         <div className="stat-card mod-dashboard"><div className="stat-icon"><FolderOpen size={20} /></div><div><div className="stat-label">Pastas</div><div className="stat-value">{totalPastas}</div></div></div>
         <div className="stat-card mod-captacao"><div className="stat-icon"><Download size={20} /></div><div><div className="stat-label">Downloads</div><div className="stat-value">43</div></div></div>
-        <div className="stat-card mod-alertas"><div className="stat-icon"><AlertTriangle size={20} /></div><div><div className="stat-label">Pendências</div><div className="stat-value">2</div></div></div>
+        <div className="stat-card mod-alertas"><div className="stat-icon"><AlertTriangle size={20} /></div><div><div className="stat-label">Pendências</div><div className="stat-value">{totalPendencias}</div></div></div>
       </div>
 
       <div className="card" style={{ marginBottom: 20 }}>
@@ -151,20 +158,23 @@ export default function Documentos() {
           <table>
             <thead><tr><th>Documento</th><th>Pasta</th><th>Projeto</th><th>Tipo</th><th>Vencimento</th><th>Status</th><th>Ações</th></tr></thead>
             <tbody>
-              {filtrados.map((doc) => (
-                <tr key={doc.id}>
-                  <td><strong>{doc.nome}</strong></td>
-                  <td>{doc.pasta}</td>
-                  <td>{doc.projeto}</td>
-                  <td><span className="badge badge-gray">{doc.tipo}</span></td>
-                  <td>{doc.vencimento}</td>
-                  <td><span className={`badge ${status[doc.status].badge}`}>{status[doc.status].label}</span></td>
-                  <td style={{ display: 'flex', gap: 8 }}>
-                    <button className="btn btn-sm btn-outline" onClick={() => visualizarDocumento(doc)}><Eye size={13} /> Ver</button>
-                    <button className="btn btn-sm btn-outline" onClick={() => baixarDocumento(doc)}><Download size={13} /> Baixar</button>
-                  </td>
-                </tr>
-              ))}
+              {filtrados.map((doc) => {
+                const statusInfo = status[doc.status] || status.ATUALIZADO
+                return (
+                  <tr key={doc.id}>
+                    <td><strong>{doc.nome}</strong></td>
+                    <td>{doc.pasta}</td>
+                    <td>{doc.projeto}</td>
+                    <td><span className="badge badge-gray">{doc.tipo}</span></td>
+                    <td>{doc.vencimento}</td>
+                    <td><span className={`badge ${statusInfo.badge}`}>{statusInfo.label}</span></td>
+                    <td style={{ display: 'flex', gap: 8 }}>
+                      <button className="btn btn-sm btn-outline" onClick={() => visualizarDocumento(doc)}><Eye size={13} /> Ver</button>
+                      <button className="btn btn-sm btn-outline" onClick={() => baixarDocumento(doc)}><Download size={13} /> Baixar</button>
+                    </td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         </div>
@@ -181,7 +191,6 @@ export default function Documentos() {
           </div>
         </div>
       )}
-
     </div>
   )
 }
