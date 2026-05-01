@@ -1,35 +1,47 @@
-import { NavLink, useLocation } from 'react-router-dom'
+import { NavLink } from 'react-router-dom'
 import {
   LayoutDashboard, Users, Heart, DollarSign,
-  FolderKanban, Bell, Settings, LogOut, Leaf
+  FolderKanban, Bell, Settings, LogOut, Leaf, ScanLine,
+  Building2, FileText, HandCoins, BarChart3, UsersRound
 } from 'lucide-react'
 
 const NAV = [
   {
     section: 'Principal',
     items: [
-      { to: '/',            label: 'Dashboard',    icon: LayoutDashboard, mod: 'mod-dashboard' },
+      { to: '/', label: 'Dashboard', icon: LayoutDashboard, mod: 'mod-dashboard' },
+      { to: '/institucional', label: 'Institucional', icon: Building2, mod: 'mod-institucional' },
     ],
   },
   {
-    section: 'Gestão',
+    section: 'Operação social',
     items: [
-      { to: '/pessoas',     label: 'Pessoas',      icon: Heart,           mod: 'mod-pessoas' },
-      { to: '/financeiro',  label: 'Financeiro',   icon: DollarSign,      mod: 'mod-financeiro' },
-      { to: '/projetos',    label: 'Projetos',     icon: FolderKanban,    mod: 'mod-projetos' },
-      { to: '/comunicacao', label: 'Comunicação',  icon: Bell,            mod: 'mod-comunicacao' },
+      { to: '/projetos', label: 'Projetos', icon: FolderKanban, mod: 'mod-projetos' },
+      { to: '/beneficiarios', label: 'Beneficiários', icon: UsersRound, mod: 'mod-beneficiarios' },
+      { to: '/pessoas', label: 'Pessoas', icon: Heart, mod: 'mod-pessoas' },
+      { to: '/documentos', label: 'Documentos', icon: FileText, mod: 'mod-documentos' },
+    ],
+  },
+  {
+    section: 'Recursos e prestação',
+    items: [
+      { to: '/financeiro', label: 'Financeiro', icon: DollarSign, mod: 'mod-financeiro' },
+      { to: '/captacao', label: 'Captação', icon: HandCoins, mod: 'mod-captacao' },
+      { to: '/relatorios', label: 'Relatórios', icon: BarChart3, mod: 'mod-relatorios' },
+      { to: '/notas-paulista', label: 'Notas Paulista', icon: ScanLine, mod: 'mod-financeiro' },
     ],
   },
   {
     section: 'Administração',
     items: [
-      { to: '/usuarios',    label: 'Usuários',     icon: Users,           mod: 'mod-usuarios' },
-      { to: '/configuracoes',label: 'Configurações',icon: Settings,       mod: 'mod-usuarios' },
+      { to: '/comunicacao', label: 'Comunicação', icon: Bell, mod: 'mod-comunicacao' },
+      { to: '/usuarios', label: 'Usuários', icon: Users, mod: 'mod-usuarios' },
+      { to: '/configuracoes', label: 'Configurações', icon: Settings, mod: 'mod-usuarios' },
     ],
   },
 ]
 
-export default function Sidebar({ user }) {
+export default function Sidebar({ user, onLogout }) {
   return (
     <aside className="app-sidebar">
       {/* Logo */}
@@ -82,6 +94,7 @@ export default function Sidebar({ user }) {
           className="btn btn-ghost btn-icon"
           style={{ color: 'rgba(255,255,255,.35)', padding: 6 }}
           title="Sair"
+          onClick={onLogout}
         >
           <LogOut size={15} />
         </button>
