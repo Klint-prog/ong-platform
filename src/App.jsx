@@ -113,6 +113,7 @@ function AppShell({ user, onLogout }) {
           <Route path="/projetos"      element={<Projetos />} />
           <Route path="/projetos/:id"  element={<ProjetoDetalhe />} />
           <Route path="/projetos/novo" element={<NovoProjetoPage />} />
+          <Route path="/projetos/:id/editar" element={<NovoProjetoPage />} />
           <Route path="/documentos"    element={<Documentos />} />
           <Route path="/captacao"      element={<Captacao />} />
           <Route path="/captacao/nova" element={<NovaOportunidadePage />} />
