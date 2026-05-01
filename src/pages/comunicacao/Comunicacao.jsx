@@ -32,7 +32,16 @@ const tipoNotif = {
 
 export default function Comunicacao() {
   const [aba, setAba] = useState('notificacoes')
+  const [templateVisualizando, setTemplateVisualizando] = useState(null)
   const navigate = useNavigate()
+
+  const usarTemplate = (template) => {
+    navigate('/comunicacao/novo', { state: { template } })
+  }
+
+  const criarTemplate = () => {
+    navigate('/comunicacao/novo', { state: { criarTemplate: true } })
+  }
 
   return (
     <div className="mod-comunicacao animate-fade-in">
@@ -130,17 +139,40 @@ export default function Comunicacao() {
               </div>
               <div style={{ fontSize: 12, color: 'var(--gray-400)' }}>{t.usos} envios realizados</div>
               <div style={{ display: 'flex', gap: 8 }}>
-                <button className="btn btn-outline btn-sm"><Eye size={13} /> Visualizar</button>
-                <button className="btn btn-primary btn-sm" style={{ '--mod-color': 'var(--lilac-500)' }}>
+                <button className="btn btn-outline btn-sm" onClick={() => setTemplateVisualizando(t)}><Eye size={13} /> Visualizar</button>
+                <button className="btn btn-primary btn-sm" style={{ '--mod-color': 'var(--lilac-500)' }} onClick={() => usarTemplate(t)}>
                   <Send size={13} /> Usar template
                 </button>
               </div>
             </div>
           ))}
-          <div className="card" style={{ border: '2px dashed var(--gray-200)', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 140, cursor: 'pointer' }}>
+          <div className="card" onClick={criarTemplate} style={{ border: '2px dashed var(--gray-200)', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 140, cursor: 'pointer' }}>
             <div style={{ textAlign: 'center', color: 'var(--gray-400)' }}>
               <Plus size={24} style={{ margin: '0 auto 8px' }} />
               <div style={{ fontSize: 14, fontWeight: 500 }}>Novo template</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {templateVisualizando && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(17, 24, 39, 0.45)', zIndex: 60, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+          <div className="card" style={{ width: 'min(560px, 100%)', display: 'grid', gap: 14 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 18, margin: 0 }}>{templateVisualizando.nome}</h3>
+              <button className="btn btn-ghost btn-sm" onClick={() => setTemplateVisualizando(null)}>Fechar</button>
+            </div>
+            <div style={{ fontSize: 13, color: 'var(--gray-500)' }}>
+              <strong>Assunto:</strong> {templateVisualizando.assunto}
+            </div>
+            <div style={{ fontSize: 13, color: 'var(--gray-600)', border: '1px solid var(--gray-200)', borderRadius: 'var(--radius-md)', padding: 14 }}>
+              Corpo sugerido do template <strong>{templateVisualizando.nome}</strong>. Use as variáveis no conteúdo da mensagem durante a edição.
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+              <button className="btn btn-outline btn-sm" onClick={() => setTemplateVisualizando(null)}>Cancelar</button>
+              <button className="btn btn-primary btn-sm" style={{ '--mod-color': 'var(--lilac-500)' }} onClick={() => usarTemplate(templateVisualizando)}>
+                <Send size={13} /> Usar template
+              </button>
             </div>
           </div>
         </div>
