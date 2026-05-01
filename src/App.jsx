@@ -14,6 +14,8 @@ import Institucional from './pages/institucional/Institucional'
 import Beneficiarios from './pages/beneficiarios/Beneficiarios'
 import Documentos from './pages/documentos/Documentos'
 import Captacao from './pages/captacao/Captacao'
+import NovaOportunidadePage from './pages/captacao/NovaOportunidadePage'
+import DossieOportunidadePage from './pages/captacao/DossieOportunidadePage'
 import Relatorios from './pages/relatorios/Relatorios'
 import { NovaPessoaPage, EditarPessoaPage, NovaTransacaoPage, NovoEnvioPage, EditarInstitucionalPage } from './pages/cadastros/Cadastros'
 import NovoProjetoPage from './pages/projetos/NovoProjetoPage'
@@ -70,6 +72,8 @@ function AppShell({ user, onLogout }) {
           <Route path="/projetos/novo" element={<NovoProjetoPage />} />
           <Route path="/documentos"    element={<Documentos />} />
           <Route path="/captacao"      element={<Captacao />} />
+          <Route path="/captacao/nova" element={<NovaOportunidadePage />} />
+          <Route path="/captacao/:id/dossie" element={<DossieOportunidadePage />} />
           <Route path="/relatorios"    element={<Relatorios />} />
           <Route path="/comunicacao"   element={<Comunicacao />} />
           <Route path="/comunicacao/novo" element={<NovoEnvioPage />} />
