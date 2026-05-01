@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import CadastroEntity from './CadastroEntity'
 import { findPessoaById, upsertPessoa } from '../pessoas/pessoasStorage'
+import { addTransacaoStorage } from '../financeiro/transacoesStorage'
 
 const CAMPOS_PESSOA = [
   { name: 'nome', label: 'Nome completo', placeholder: 'Ex.: Maria da Silva' },
@@ -42,14 +43,48 @@ export function EditarPessoaPage() {
 }
 
 export function NovaTransacaoPage() {
+  const navigate = useNavigate()
+
   return (
     <CadastroEntity titulo="Nova transação" subtitulo="Registre receitas e despesas da organização" cor="var(--green-500)"
       campos={[
         { name: 'descricao', label: 'Descrição', placeholder: 'Ex.: Doação - Empresa XYZ' },
-        { name: 'categoria', label: 'Categoria', placeholder: 'Ex.: Doações' },
+        {
+          name: 'categoria',
+          label: 'Categoria (tags)',
+          type: 'tag-selector',
+          options: [
+            { name: 'Doações', color: '#22c55e' },
+            { name: 'Patrocínios', color: '#a855f7' },
+            { name: 'Editais', color: '#3b82f6' },
+            { name: 'Aluguel', color: '#f97316' },
+          ],
+        },
         { name: 'valor', label: 'Valor', type: 'number', placeholder: '0,00' },
-        { name: 'tipo', label: 'Tipo', placeholder: 'RECEITA ou DESPESA' },
+        {
+          name: 'tipo',
+          label: 'Tipo (tags)',
+          type: 'tag-selector',
+          options: [
+            { name: 'RECEITA', color: '#22c55e' },
+            { name: 'DESPESA', color: '#ef4444' },
+          ],
+        },
       ]}
+      onSave={(form) => {
+        addTransacaoStorage({
+          ...form,
+          valor: Number(form.valor || 0),
+          status: form.tipo === 'RECEITA' ? 'RECEBIDA' : 'APROVADA',
+          data: new Date().toISOString().slice(0, 10),
+          vencimento: new Date().toISOString().slice(0, 10),
+          pagamento: null,
+          projeto: 'Fundo Geral',
+          conta: 'Conta principal ONG',
+          comprovante: 'PENDENTE',
+        })
+        navigate('/financeiro')
+      }}
     />
   )
 }
