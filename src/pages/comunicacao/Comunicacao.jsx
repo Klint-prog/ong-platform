@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Bell, Mail, FileText, Plus, Send, CheckCheck, Clock, AlertCircle, Info, Eye } from 'lucide-react'
+import { Bell, Mail, FileText, Plus, Send, CheckCheck, Clock, AlertCircle, Info, Eye, Settings } from 'lucide-react'
+import { getEmailConfigStatus } from '../configuracoes/emailConfigStorage'
 
 const NOTIFICACOES = [
   { id: 1, titulo: 'Projeto concluído',      mensagem: 'O projeto "Saúde Rural" foi marcado como concluído.',      tipo: 'INFO',  lida: false, tempo: '5 min' },
@@ -33,6 +34,7 @@ const tipoNotif = {
 export default function Comunicacao() {
   const [aba, setAba] = useState('notificacoes')
   const navigate = useNavigate()
+  const { conectado, config } = getEmailConfigStatus()
 
   return (
     <div className="mod-comunicacao animate-fade-in">
@@ -43,6 +45,20 @@ export default function Comunicacao() {
         </div>
         <button className="btn btn-primary" onClick={() => navigate('/comunicacao/novo')}>
           <Plus size={16} /> Novo envio
+        </button>
+      </div>
+
+      <div className="card animate-fade-up" style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+        <div>
+          <div style={{ fontWeight: 700, fontSize: 14 }}>Integração de e-mail</div>
+          <div style={{ fontSize: 13, color: 'var(--gray-500)', marginTop: 4 }}>
+            {conectado
+              ? `Envio conectado via ${config.protocolo} em ${config.host}:${config.porta}.`
+              : 'Configure SMTP/POP3/IMAP em Configurações para habilitar os envios reais.'}
+          </div>
+        </div>
+        <button className="btn btn-outline btn-sm" onClick={() => navigate('/configuracoes')}>
+          <Settings size={14} /> Ir para Configurações
         </button>
       </div>
 

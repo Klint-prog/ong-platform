@@ -18,6 +18,7 @@ import Relatorios from './pages/relatorios/Relatorios'
 import { NovaPessoaPage, EditarPessoaPage, NovaTransacaoPage, NovoEnvioPage, EditarInstitucionalPage } from './pages/cadastros/Cadastros'
 import NovoProjetoPage from './pages/projetos/NovoProjetoPage'
 import { Search, Bell, Settings } from 'lucide-react'
+import Configuracoes from './pages/configuracoes/Configuracoes'
 
 function AppShell({ user, onLogout }) {
   return (
@@ -75,7 +76,7 @@ function AppShell({ user, onLogout }) {
           <Route path="/comunicacao/novo" element={<NovoEnvioPage />} />
           <Route path="/usuarios"      element={<Usuarios />} />
           <Route path="/notas-paulista" element={<NotasPaulista />} />
-          <Route path="/configuracoes" element={<div className="card"><h2 style={{ fontFamily: 'var(--font-display)' }}>Configurações</h2><p style={{ color: 'var(--gray-400)', marginTop: 8 }}>Em breve.</p></div>} />
+          <Route path="/configuracoes" element={<Configuracoes />} />
           <Route path="*"              element={<Navigate to="/" replace />} />
         </Routes>
       </main>
