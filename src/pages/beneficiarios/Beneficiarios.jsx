@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
-import { UsersRound, Plus, Search, MapPin, FileSignature, HeartHandshake, Trash2, Pencil } from 'lucide-react'
+import { UsersRound, Plus, Search, MapPin, FileSignature, HeartHandshake, Trash2, Pencil, Check, X } from 'lucide-react'
+import { TIPOS_PADRAO, listarTipos, salvarTipos } from './tiposBeneficiario'
 
 const seedBeneficiarios = [
   { id: 1, nome: 'Família Silva', tipo: 'FAMILIA', comunidade: 'Engenho Sirigi', projeto: 'Horta Solidária', telefone: '(81) 98888-1111', status: 'ATIVO', termoLgpd: true, atendimentos: 7 },
@@ -9,10 +10,15 @@ const seedBeneficiarios = [
 ]
 
 const formatarTipo = (tipo) => tipo.replaceAll('_', ' ').toLowerCase().replace(/(^|\s)\S/g, (l) => l.toUpperCase())
+const normalizarTipo = (tipo) => tipo.trim().toUpperCase().replaceAll(' ', '_')
 
 export default function Beneficiarios() {
   const [beneficiarios, setBeneficiarios] = useState(seedBeneficiarios)
   const [busca, setBusca] = useState('')
+  const [tipos, setTipos] = useState(() => listarTipos())
+  const [novoTipo, setNovoTipo] = useState('')
+  const [editandoTipo, setEditandoTipo] = useState(null)
+  const [valorEdicaoTipo, setValorEdicaoTipo] = useState('')
   const [modoFormulario, setModoFormulario] = useState('novo')
   const [editandoId, setEditandoId] = useState(null)
   const [form, setForm] = useState({
@@ -26,12 +32,41 @@ export default function Beneficiarios() {
     atendimentos: 0,
   })
 
+  const tipoDisponivel = tipos.includes(form.tipo) ? form.tipo : tipos[0] || 'FAMILIA'
+
+  const adicionarTipo = () => {
+    const normalizado = normalizarTipo(novoTipo)
+    if (!normalizado || tipos.includes(normalizado)) return
+    const atualizados = [...tipos, normalizado]
+    setTipos(atualizados)
+    salvarTipos(atualizados)
+    setNovoTipo('')
+  }
+
+  const salvarEdicaoTipo = () => {
+    if (!editandoTipo) return
+    const normalizado = normalizarTipo(valorEdicaoTipo)
+    if (!normalizado) return
+
+    const atualizados = tipos.map((tipo) => (tipo === editandoTipo ? normalizado : tipo))
+    const unicos = Array.from(new Set(atualizados))
+    setTipos(unicos)
+    salvarTipos(unicos)
+    setBeneficiarios((atual) => atual.map((b) => (b.tipo === editandoTipo ? { ...b, tipo: normalizado } : b)))
+    setForm((atual) => (atual.tipo === editandoTipo ? { ...atual, tipo: normalizado } : atual))
+    setEditandoTipo(null)
+    setValorEdicaoTipo('')
+  }
+
   const excluirTipo = (tipo) => {
     if (TIPOS_PADRAO.includes(tipo)) return
     const atualizados = tipos.filter((t) => t !== tipo)
     setTipos(atualizados)
     salvarTipos(atualizados)
+    setBeneficiarios((atual) => atual.map((b) => (b.tipo === tipo ? { ...b, tipo: 'FAMILIA' } : b)))
+    setForm((atual) => (atual.tipo === tipo ? { ...atual, tipo: 'FAMILIA' } : atual))
   }
+
   const filtrados = useMemo(() => beneficiarios.filter((b) => {
     const termo = busca.toLowerCase()
     return b.nome.toLowerCase().includes(termo) || b.comunidade.toLowerCase().includes(termo) || b.projeto.toLowerCase().includes(termo)
@@ -48,7 +83,7 @@ export default function Beneficiarios() {
   }
 
   const resetarFormulario = () => {
-    setForm({ nome: '', tipo: 'FAMILIA', comunidade: '', projeto: '', telefone: '', status: 'ATIVO', termoLgpd: false, atendimentos: 0 })
+    setForm({ nome: '', tipo: tipos[0] || 'FAMILIA', comunidade: '', projeto: '', telefone: '', status: 'ATIVO', termoLgpd: false, atendimentos: 0 })
     setModoFormulario('novo')
     setEditandoId(null)
   }
@@ -64,13 +99,14 @@ export default function Beneficiarios() {
     if (!form.nome.trim() || !form.comunidade.trim() || !form.projeto.trim()) return
 
     if (modoFormulario === 'edicao' && editandoId) {
-      setBeneficiarios((atual) => atual.map((b) => (b.id === editandoId ? { ...b, ...form, nome: form.nome.trim() } : b)))
+      setBeneficiarios((atual) => atual.map((b) => (b.id === editandoId ? { ...b, ...form, nome: form.nome.trim(), tipo: tipoDisponivel } : b)))
       resetarFormulario()
       return
     }
 
     const novo = {
       ...form,
+      tipo: tipoDisponivel,
       id: Math.max(0, ...beneficiarios.map((b) => b.id)) + 1,
       nome: form.nome.trim(),
     }
@@ -98,8 +134,8 @@ export default function Beneficiarios() {
           <input value={form.telefone} onChange={(e) => atualizarCampo('telefone', e.target.value)} placeholder="Telefone" />
         </div>
         <div className="grid-4" style={{ marginBottom: 12 }}>
-          <select value={form.tipo} onChange={(e) => atualizarCampo('tipo', e.target.value)}>
-            {Object.entries(tipoLabel).map(([valor, label]) => <option value={valor} key={valor}>{label}</option>)}
+          <select value={tipoDisponivel} onChange={(e) => atualizarCampo('tipo', e.target.value)}>
+            {tipos.map((tipo) => <option value={tipo} key={tipo}>{formatarTipo(tipo)}</option>)}
           </select>
           <select value={form.status} onChange={(e) => atualizarCampo('status', e.target.value)}>
             <option value="ATIVO">Ativo</option>
@@ -120,7 +156,7 @@ export default function Beneficiarios() {
         <div className="stat-card mod-beneficiarios"><div className="stat-icon"><UsersRound size={20} /></div><div><div className="stat-label">Beneficiários</div><div className="stat-value">{beneficiarios.length}</div></div></div>
         <div className="stat-card mod-projetos"><div className="stat-icon"><HeartHandshake size={20} /></div><div><div className="stat-label">Atendimentos</div><div className="stat-value">{beneficiarios.reduce((acc, b) => acc + b.atendimentos, 0)}</div></div></div>
         <div className="stat-card mod-documentos"><div className="stat-icon"><FileSignature size={20} /></div><div><div className="stat-label">Termos LGPD</div><div className="stat-value">{beneficiarios.filter((b) => b.termoLgpd).length}</div></div></div>
-        <div className="stat-card mod-dashboard"><div className="stat-icon"><MapPin size={20} /></div><div><div className="stat-label">Comunidades</div><div className="stat-value">3</div></div></div>
+        <div className="stat-card mod-dashboard"><div className="stat-icon"><MapPin size={20} /></div><div><div className="stat-label">Comunidades</div><div className="stat-value">{new Set(beneficiarios.map((b) => b.comunidade)).size}</div></div></div>
       </div>
 
       <div className="card" style={{ marginBottom: 20 }}>
