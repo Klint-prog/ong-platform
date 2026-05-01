@@ -3,6 +3,7 @@ import { ArrowLeft, Save, Send } from 'lucide-react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import CadastroEntity from './CadastroEntity'
 import { findPessoaById, upsertPessoa } from '../pessoas/pessoasStorage'
+import { loadInstitucional, saveInstitucional } from '../institucional/institucionalStorage'
 
 const CAMPOS_PESSOA = [
   { name: 'nome', label: 'Nome completo', placeholder: 'Ex.: Maria da Silva' },
@@ -160,8 +161,16 @@ export function NovoEnvioPage() {
 }
 
 export function EditarInstitucionalPage() {
+  const navigate = useNavigate()
+  const dados = useMemo(() => loadInstitucional(), [])
+
   return (
     <CadastroEntity titulo="Editar cadastro institucional" subtitulo="Atualize os dados oficiais da ONG" cor="var(--purple-500)"
+      initialValues={dados}
+      onSave={(form) => {
+        saveInstitucional(form)
+        navigate('/institucional')
+      }}
       campos={[
         { name: 'nome', label: 'Nome da organização', placeholder: 'Associação...' },
         { name: 'cnpj', label: 'CNPJ', placeholder: '00.000.000/0000-00' },
