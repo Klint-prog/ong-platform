@@ -8,6 +8,7 @@ import Projetos from './pages/projetos/Projetos'
 import Comunicacao from './pages/comunicacao/Comunicacao'
 import Usuarios from './pages/usuarios/Usuarios'
 import Login from './pages/auth/Login'
+import { NovaPessoaPage, EditarPessoaPage, NovaTransacaoPage, NovoProjetoPage, NovoEnvioPage } from './pages/cadastros/Cadastros'
 import { Search, Bell, Settings } from 'lucide-react'
 
 function AppShell({ user, onLogout }) {
@@ -49,9 +50,14 @@ function AppShell({ user, onLogout }) {
         <Routes>
           <Route path="/"              element={<Dashboard />} />
           <Route path="/pessoas"       element={<Pessoas />} />
+          <Route path="/pessoas/nova"  element={<NovaPessoaPage />} />
+          <Route path="/pessoas/:id/editar" element={<EditarPessoaPage />} />
           <Route path="/financeiro"    element={<Financeiro />} />
+          <Route path="/financeiro/nova" element={<NovaTransacaoPage />} />
           <Route path="/projetos"      element={<Projetos />} />
+          <Route path="/projetos/novo" element={<NovoProjetoPage />} />
           <Route path="/comunicacao"   element={<Comunicacao />} />
+          <Route path="/comunicacao/novo" element={<NovoEnvioPage />} />
           <Route path="/usuarios"      element={<Usuarios />} />
           <Route path="/configuracoes" element={<div className="card"><h2 style={{ fontFamily: 'var(--font-display)' }}>Configurações</h2><p style={{ color: 'var(--gray-400)', marginTop: 8 }}>Em breve.</p></div>} />
           <Route path="*"              element={<Navigate to="/" replace />} />

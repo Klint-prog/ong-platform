@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { DollarSign, TrendingUp, TrendingDown, Plus, ArrowUpRight, ArrowDownRight, MoreHorizontal, Search } from 'lucide-react'
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid } from 'recharts'
 
@@ -26,6 +27,7 @@ const fluxo = [
 
 export default function Financeiro() {
   const [filtro, setFiltro] = useState('TODOS')
+  const navigate = useNavigate()
 
   const filtradas = TRANSACOES.filter(t => filtro === 'TODOS' || t.tipo === filtro)
   const receitas = TRANSACOES.filter(t => t.tipo === 'RECEITA' && t.status === 'CONFIRMADA').reduce((s, t) => s + t.valor, 0)
@@ -40,7 +42,7 @@ export default function Financeiro() {
           <h1 className="page-title">Financeiro</h1>
           <p className="page-subtitle">Receitas, despesas, doações e prestação de contas</p>
         </div>
-        <button className="btn btn-primary">
+        <button className="btn btn-primary" onClick={() => navigate('/financeiro/nova')}>
           <Plus size={16} /> Nova transação
         </button>
       </div>

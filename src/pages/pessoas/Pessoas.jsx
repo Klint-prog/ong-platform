@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { Heart, Plus, Search, Filter, Phone, Mail, MoreHorizontal, Users, UserCheck, Handshake, Gift } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { Heart, Plus, Search, Filter, Phone, Mail, Pencil, Users, UserCheck, Handshake, Gift } from 'lucide-react'
 
 const PESSOAS = [
   { id: 1, nome: 'Maria Silva',      tipo: 'VOLUNTARIO',    status: 'ATIVO',    telefone: '(81) 99123-4567', email: 'maria@email.com',   horas: 124, projetos: 3, inicial: 'MS', cor: '#ec4899' },
@@ -27,6 +28,7 @@ const STATS = [
 export default function Pessoas() {
   const [busca, setBusca] = useState('')
   const [tipoFiltro, setTipoFiltro] = useState('TODOS')
+  const navigate = useNavigate()
 
   const filtradas = PESSOAS.filter(p => {
     const matchBusca = p.nome.toLowerCase().includes(busca.toLowerCase()) || p.email.includes(busca)
@@ -41,7 +43,7 @@ export default function Pessoas() {
           <h1 className="page-title">Pessoas</h1>
           <p className="page-subtitle">Gerencie membros, voluntários, beneficiários e doadores</p>
         </div>
-        <button className="btn btn-primary">
+        <button className="btn btn-primary" onClick={() => navigate('/pessoas/nova')}>
           <Plus size={16} /> Nova pessoa
         </button>
       </div>
@@ -135,8 +137,8 @@ export default function Pessoas() {
                       </span>
                     </td>
                     <td>
-                      <button className="btn btn-ghost btn-icon btn-sm">
-                        <MoreHorizontal size={16} />
+                      <button className="btn btn-ghost btn-icon btn-sm" onClick={() => navigate(`/pessoas/${p.id}/editar`)} title="Editar pessoa">
+                        <Pencil size={16} />
                       </button>
                     </td>
                   </tr>
