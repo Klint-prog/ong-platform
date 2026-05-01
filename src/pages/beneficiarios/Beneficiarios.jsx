@@ -8,12 +8,7 @@ const seedBeneficiarios = [
   { id: 4, nome: 'Coletivo de Agricultores Sirigi', tipo: 'GRUPO', comunidade: 'Engenho Sirigi', projeto: 'Saúde Rural', telefone: '(81) 95555-4444', status: 'ATIVO', termoLgpd: true, atendimentos: 11 },
 ]
 
-const tipoLabel = {
-  FAMILIA: 'Família',
-  MULHER_RURAL: 'Mulher rural',
-  JOVEM: 'Jovem',
-  GRUPO: 'Grupo comunitário',
-}
+const formatarTipo = (tipo) => tipo.replaceAll('_', ' ').toLowerCase().replace(/(^|\s)\S/g, (l) => l.toUpperCase())
 
 export default function Beneficiarios() {
   const [beneficiarios, setBeneficiarios] = useState(seedBeneficiarios)
@@ -31,6 +26,12 @@ export default function Beneficiarios() {
     atendimentos: 0,
   })
 
+  const excluirTipo = (tipo) => {
+    if (TIPOS_PADRAO.includes(tipo)) return
+    const atualizados = tipos.filter((t) => t !== tipo)
+    setTipos(atualizados)
+    salvarTipos(atualizados)
+  }
   const filtrados = useMemo(() => beneficiarios.filter((b) => {
     const termo = busca.toLowerCase()
     return b.nome.toLowerCase().includes(termo) || b.comunidade.toLowerCase().includes(termo) || b.projeto.toLowerCase().includes(termo)
@@ -128,6 +129,32 @@ export default function Beneficiarios() {
           <input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar por nome, comunidade ou projeto…" style={{ paddingLeft: 38 }} />
         </div>
       </div>
+      <div className="card" style={{ marginBottom: 20 }}>
+        <h3 style={{ marginBottom: 10 }}>Tipos de beneficiário</h3>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+          <input value={novoTipo} onChange={(e) => setNovoTipo(e.target.value)} placeholder="Novo tipo (ex: Idoso)" />
+          <button className="btn btn-outline" onClick={adicionarTipo} type="button"><Plus size={14} /> Adicionar tipo</button>
+        </div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          {tipos.map((tipo) => (
+            <div key={tipo} style={{ display: 'flex', alignItems: 'center', gap: 6, border: '1px solid var(--gray-200)', borderRadius: 999, padding: '6px 10px' }}>
+              {editandoTipo === tipo ? (
+                <>
+                  <input value={valorEdicaoTipo} onChange={(e) => setValorEdicaoTipo(e.target.value)} style={{ width: 140, padding: '4px 8px' }} />
+                  <button className="btn btn-ghost btn-icon btn-sm" onClick={salvarEdicaoTipo} type="button"><Check size={14} /></button>
+                  <button className="btn btn-ghost btn-icon btn-sm" onClick={() => setEditandoTipo(null)} type="button"><X size={14} /></button>
+                </>
+              ) : (
+                <>
+                  <span style={{ fontSize: 12 }}>{formatarTipo(tipo)}</span>
+                  <button className="btn btn-ghost btn-icon btn-sm" onClick={() => { setEditandoTipo(tipo); setValorEdicaoTipo(tipo) }} type="button"><Pencil size={14} /></button>
+                  {!TIPOS_PADRAO.includes(tipo) && <button className="btn btn-ghost btn-icon btn-sm" onClick={() => excluirTipo(tipo)} type="button"><Trash2 size={14} /></button>}
+                </>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
 
       <div className="card">
         <div className="table-wrap">
@@ -137,7 +164,7 @@ export default function Beneficiarios() {
               {filtrados.map((b) => (
                 <tr key={b.id}>
                   <td><strong>{b.nome}</strong><div style={{ fontSize: 12, color: 'var(--gray-400)' }}>{b.telefone}</div></td>
-                  <td><span className="badge badge-blue">{tipoLabel[b.tipo]}</span></td>
+                  <td><span className="badge badge-blue">{formatarTipo(b.tipo)}</span></td>
                   <td>{b.comunidade}</td>
                   <td>{b.projeto}</td>
                   <td><strong>{b.atendimentos}</strong></td>
