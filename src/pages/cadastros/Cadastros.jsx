@@ -75,6 +75,8 @@ export function NovaTransacaoPage() {
       ]}
       onSave={(form) => {
         const tipo = form.tipo || 'RECEITA'
+        const dataHoje = new Date().toISOString().slice(0, 10)
+
         addTransacaoStorage({
           ...form,
           tipo,
@@ -82,9 +84,9 @@ export function NovaTransacaoPage() {
           descricao: form.descricao || 'Transação sem descrição',
           valor: Number(form.valor || 0),
           status: tipo === 'RECEITA' ? 'RECEBIDA' : 'APROVADA',
-          data: new Date().toISOString().slice(0, 10),
-          vencimento: new Date().toISOString().slice(0, 10),
-          pagamento: tipo === 'RECEITA' ? new Date().toISOString().slice(0, 10) : null,
+          data: dataHoje,
+          vencimento: dataHoje,
+          pagamento: tipo === 'RECEITA' ? dataHoje : null,
           projeto: 'Fundo Geral',
           conta: 'Conta principal ONG',
           forma: 'Manual',

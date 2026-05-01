@@ -1,12 +1,6 @@
 import { useMemo, useState } from 'react'
 import { CalendarClock, CircleDollarSign, FilePlus2, Send, Trophy, XCircle } from 'lucide-react'
-
-const oportunidadesIniciais = [
-  { id: 1, nome: 'Edital Segurança Alimentar 2026', fonte: 'Instituto Parceiro', valor: 75000, prazo: '2026-05-20', status: 'EM_ELABORACAO', responsavel: 'Coordenação de Projetos' },
-  { id: 2, nome: 'Chamada Empoderamento Rural', fonte: 'Empresa patrocinadora', valor: 120000, prazo: '2026-06-15', status: 'PROSPECCAO', responsavel: 'Diretoria' },
-  { id: 3, nome: 'Projeto Escola Digital', fonte: 'Fundo Municipal', valor: 35000, prazo: '2026-04-10', status: 'ENVIADO', responsavel: 'Equipe técnica' },
-  { id: 4, nome: 'Programa Hortas Comunitárias', fonte: 'Fundação privada', valor: 50000, prazo: '2026-03-30', status: 'APROVADO', responsavel: 'Coordenação Geral' },
-]
+import { getOportunidades, getStatusList, saveOportunidades, saveStatusList } from './captacaoStorage'
 
 const statusPadrao = [
   { id: 'PROSPECCAO', label: 'Prospecção', color: '#6B7280', icon: FilePlus2 },
@@ -16,30 +10,57 @@ const statusPadrao = [
   { id: 'REPROVADO', label: 'Reprovado', color: '#DC2626', icon: XCircle },
 ]
 
+const statusIconMap = {
+  PROSPECCAO: FilePlus2,
+  EM_ELABORACAO: CalendarClock,
+  ENVIADO: Send,
+  APROVADO: Trophy,
+  REPROVADO: XCircle,
+}
+
 const fmt = (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 
+function normalizarStatus(statusList = []) {
+  const base = statusList.length ? statusList : statusPadrao
+  return base.map((status) => ({
+    ...status,
+    icon: status.icon || statusIconMap[status.id] || FilePlus2,
+  }))
+}
+
 export default function Captacao() {
-  const [oportunidades, setOportunidades] = useState(oportunidadesIniciais)
-  const [statusList, setStatusList] = useState(statusPadrao)
+  const [oportunidades, setOportunidades] = useState(() => getOportunidades())
+  const [statusList, setStatusList] = useState(() => normalizarStatus(getStatusList()))
   const [mostrarForm, setMostrarForm] = useState(false)
   const [novoStatusNome, setNovoStatusNome] = useState('')
   const [novoStatusCor, setNovoStatusCor] = useState('#7C3AED')
   const [form, setForm] = useState({
-    nome: '', fonte: '', valor: '', prazo: '', responsavel: '', status: statusPadrao[0].id,
+    nome: '', fonte: '', valor: '', prazo: '', responsavel: '', status: statusList[0]?.id || 'PROSPECCAO',
   })
   const [dossieAberto, setDossieAberto] = useState(null)
 
   const statusMap = useMemo(() => Object.fromEntries(statusList.map((s) => [s.id, s])), [statusList])
 
-  const totalProspectado = oportunidades.reduce((acc, item) => acc + item.valor, 0)
-  const aprovado = oportunidades.filter((item) => item.status === 'APROVADO').reduce((acc, item) => acc + item.valor, 0)
+  const totalProspectado = oportunidades.reduce((acc, item) => acc + Number(item.valor || 0), 0)
+  const aprovado = oportunidades.filter((item) => item.status === 'APROVADO').reduce((acc, item) => acc + Number(item.valor || 0), 0)
+
+  const persistirOportunidades = (next) => {
+    setOportunidades(next)
+    saveOportunidades(next)
+  }
+
+  const persistirStatus = (next) => {
+    const normalizados = normalizarStatus(next)
+    setStatusList(normalizados)
+    saveStatusList(normalizados.map(({ icon, ...status }) => status))
+  }
 
   const criarStatusPersonalizado = () => {
     const nome = novoStatusNome.trim()
     if (!nome) return
     const id = `CUSTOM_${Date.now()}`
     const novoStatus = { id, label: nome, color: novoStatusCor, icon: FilePlus2 }
-    setStatusList((prev) => [...prev, novoStatus])
+    persistirStatus([...statusList, novoStatus])
     setForm((prev) => ({ ...prev, status: id }))
     setNovoStatusNome('')
   }
@@ -59,16 +80,14 @@ export default function Captacao() {
       responsavel: dossieAberto.responsavel.trim(),
     }
     if (!atualizado.nome || !atualizado.fonte || !atualizado.prazo || !atualizado.responsavel) return
-    setOportunidades((prev) => prev.map((item) => (item.id === atualizado.id ? atualizado : item)))
+    persistirOportunidades(oportunidades.map((item) => (String(item.id) === String(atualizado.id) ? atualizado : item)))
     setDossieAberto(null)
   }
-
 
   const importarArquivoDossie = (e) => {
     const arquivo = e.target.files?.[0]
     if (!arquivo || !dossieAberto) return
-    setDossieAberto((prev) => ({ ...prev, observacoes: `${prev.observacoes || ''}
-[Arquivo anexado] ${arquivo.name}`.trim() }))
+    setDossieAberto((prev) => ({ ...prev, observacoes: `${prev.observacoes || ''}\n[Arquivo anexado] ${arquivo.name}`.trim() }))
     e.target.value = ''
   }
 
@@ -86,10 +105,9 @@ export default function Captacao() {
     URL.revokeObjectURL(url)
   }
 
-
   const excluirOportunidade = (id) => {
-    setOportunidades((prev) => prev.filter((item) => item.id !== id))
-    setDossieAberto((prev) => (prev?.id === id ? null : prev))
+    persistirOportunidades(oportunidades.filter((item) => String(item.id) !== String(id)))
+    setDossieAberto((prev) => (String(prev?.id) === String(id) ? null : prev))
   }
 
   const cadastrarOportunidade = (e) => {
@@ -102,10 +120,11 @@ export default function Captacao() {
       prazo: form.prazo,
       responsavel: form.responsavel.trim(),
       status: form.status,
+      observacoes: '',
     }
     if (!nova.nome || !nova.fonte || !nova.prazo || !nova.responsavel) return
-    setOportunidades((prev) => [nova, ...prev])
-    setForm({ nome: '', fonte: '', valor: '', prazo: '', responsavel: '', status: statusList[0]?.id || '' })
+    persistirOportunidades([nova, ...oportunidades])
+    setForm({ nome: '', fonte: '', valor: '', prazo: '', responsavel: '', status: statusList[0]?.id || 'PROSPECCAO' })
     setMostrarForm(false)
   }
 
@@ -188,7 +207,7 @@ export default function Captacao() {
                   <tr key={item.id}>
                     <td><strong>{item.nome}</strong></td>
                     <td>{item.fonte}</td>
-                    <td>{fmt(item.valor)}</td>
+                    <td>{fmt(Number(item.valor || 0))}</td>
                     <td>{new Date(`${item.prazo}T12:00:00`).toLocaleDateString('pt-BR')}</td>
                     <td>{item.responsavel}</td>
                     <td>
