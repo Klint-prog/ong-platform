@@ -46,7 +46,17 @@ export function NovaTransacaoPage() {
     <CadastroEntity titulo="Nova transação" subtitulo="Registre receitas e despesas da organização" cor="var(--green-500)"
       campos={[
         { name: 'descricao', label: 'Descrição', placeholder: 'Ex.: Doação - Empresa XYZ' },
-        { name: 'categoria', label: 'Categoria', placeholder: 'Ex.: Doações' },
+        {
+          name: 'categoria',
+          label: 'Categoria (tags)',
+          type: 'tag-selector',
+          options: [
+            { name: 'Doações', color: '#22c55e' },
+            { name: 'Patrocínios', color: '#a855f7' },
+            { name: 'Editais', color: '#3b82f6' },
+            { name: 'Aluguel', color: '#f97316' },
+          ],
+        },
         { name: 'valor', label: 'Valor', type: 'number', placeholder: '0,00' },
         { name: 'tipo', label: 'Tipo', placeholder: 'RECEITA ou DESPESA' },
       ]}
