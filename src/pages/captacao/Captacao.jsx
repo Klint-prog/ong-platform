@@ -114,7 +114,6 @@ export default function Captacao() {
       <div className="page-header">
         <div>
           <h1 className="page-title">Captação de Recursos</h1>
-          <p className="page-subtitle">Controle de editais, propostas, prazos, fontes financiadoras e oportunidades</p>
         </div>
         <button className="btn btn-primary" onClick={() => setMostrarForm((prev) => !prev)}>
           <FilePlus2 size={16} /> Nova oportunidade
