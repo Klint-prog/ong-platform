@@ -391,7 +391,7 @@ function AttachmentsTable({ comprovantes }) {
                 <td>{fmt(doc.valor)}</td>
                 <td><span className={`badge ${doc.status === 'VALIDO' ? 'badge-green' : 'badge-yellow'}`}>{doc.status === 'VALIDO' ? 'Validado' : 'Pendente'}</span></td>
                 <td>{doc.validador}</td>
-                <td style={{ display: 'flex', gap: 8 }}><button className="btn btn-sm btn-outline">Ver</button><button className="btn btn-sm btn-outline">Validar</button></td>
+                <td><button className="btn btn-sm btn-outline">Ver e validar</button></td>
               </tr>
             ))}
           </tbody>
