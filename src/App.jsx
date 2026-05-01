@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { useMemo, useState } from 'react'
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import Sidebar from './components/layout/Sidebar'
 import Dashboard from './pages/dashboard/Dashboard'
 import Pessoas from './pages/pessoas/Pessoas'
@@ -12,17 +12,36 @@ import Login from './pages/auth/Login'
 import NotasPaulista from './pages/notas/NotasPaulista'
 import Institucional from './pages/institucional/Institucional'
 import Beneficiarios from './pages/beneficiarios/Beneficiarios'
+import BeneficiarioCadastroPage from './pages/beneficiarios/BeneficiarioCadastroPage'
 import Documentos from './pages/documentos/Documentos'
 import Captacao from './pages/captacao/Captacao'
+import NovaOportunidadePage from './pages/captacao/NovaOportunidadePage'
+import DossieOportunidadePage from './pages/captacao/DossieOportunidadePage'
 import Relatorios from './pages/relatorios/Relatorios'
-import { NovaPessoaPage, NovaTransacaoPage, NovoEnvioPage, EditarInstitucionalPage } from './pages/cadastros/Cadastros'
+import { NovaPessoaPage, EditarPessoaPage, NovaTransacaoPage, NovoEnvioPage, EditarInstitucionalPage } from './pages/cadastros/Cadastros'
 import NovoProjetoPage from './pages/projetos/NovoProjetoPage'
 import { Search, Bell, Settings } from 'lucide-react'
+import Configuracoes from './pages/configuracoes/Configuracoes'
 
 function AppShell({ user, onLogout }) {
+  const navigate = useNavigate()
+  const [menuAberto, setMenuAberto] = useState(false)
+  const [perfilDraft, setPerfilDraft] = useState(() => ({
+    nome: user?.nome || '',
+    fotoUrl: user?.fotoUrl || '',
+    telefone: user?.telefone || '',
+    bio: user?.bio || '',
+  }))
+
+  const avatarInicial = useMemo(() => (perfilDraft?.nome?.charAt(0) || user?.nome?.charAt(0) || 'A'), [perfilDraft?.nome, user?.nome])
+
+  const salvarPerfil = () => {
+    setMenuAberto(false)
+  }
+
   return (
     <div className="app-shell">
-      <Sidebar user={user} />
+      <Sidebar user={user} onLogout={onLogout} />
 
       {/* Topbar */}
       <header className="app-topbar">
@@ -40,15 +59,39 @@ function AppShell({ user, onLogout }) {
             <Settings size={18} color="var(--gray-500)" />
           </button>
           <div style={{ width: 1, height: 24, background: 'var(--gray-100)', margin: '0 4px' }} />
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', borderRadius: 'var(--radius-sm)', cursor: 'pointer' }}
-            onClick={onLogout}>
+          <div
+            style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', borderRadius: 'var(--radius-sm)', cursor: 'pointer', position: 'relative' }}
+            onClick={() => setMenuAberto((v) => !v)}
+          >
             <div className="avatar avatar-sm" style={{ background: 'linear-gradient(135deg, var(--purple-500), var(--pink-500))' }}>
-              {user?.nome?.charAt(0) ?? 'A'}
+              {avatarInicial}
             </div>
             <div>
-              <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--gray-700)' }}>{user?.nome}</div>
+              <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--gray-700)' }}>{perfilDraft?.nome || user?.nome}</div>
               <div style={{ fontSize: 10, color: 'var(--gray-400)' }}>{user?.role?.toLowerCase()}</div>
             </div>
+
+            {menuAberto && (
+              <div style={{ position: 'absolute', top: 'calc(100% + 8px)', right: 0, width: 280, background: '#fff', border: '1px solid var(--gray-100)', borderRadius: 12, boxShadow: '0 12px 30px rgba(17, 24, 39, 0.12)', padding: 12, zIndex: 20 }} onClick={(e) => e.stopPropagation()}>
+                <button className="btn btn-ghost" style={{ width: '100%', justifyContent: 'flex-start', marginBottom: 8 }} onClick={() => onLogout()}>
+                  Sair
+                </button>
+                <button className="btn btn-ghost" style={{ width: '100%', justifyContent: 'flex-start', marginBottom: 8 }} onClick={() => onLogout()}>
+                  Trocar usuário
+                </button>
+                <button className="btn btn-ghost" style={{ width: '100%', justifyContent: 'flex-start', marginBottom: 10 }} onClick={() => navigate('/configuracoes')}>
+                  Abrir configurações gerais
+                </button>
+                <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 8, color: 'var(--gray-600)' }}>Configurações do usuário</div>
+                <div style={{ display: 'grid', gap: 6 }}>
+                  <input value={perfilDraft.nome} onChange={(e) => setPerfilDraft((d) => ({ ...d, nome: e.target.value }))} placeholder="Nome" />
+                  <input value={perfilDraft.fotoUrl} onChange={(e) => setPerfilDraft((d) => ({ ...d, fotoUrl: e.target.value }))} placeholder="URL da foto" />
+                  <input value={perfilDraft.telefone} onChange={(e) => setPerfilDraft((d) => ({ ...d, telefone: e.target.value }))} placeholder="Telefone" />
+                  <textarea value={perfilDraft.bio} onChange={(e) => setPerfilDraft((d) => ({ ...d, bio: e.target.value }))} placeholder="Informações adicionais" rows={3} />
+                  <button className="btn btn-primary" onClick={salvarPerfil}>Salvar perfil</button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </header>
@@ -61,7 +104,10 @@ function AppShell({ user, onLogout }) {
           <Route path="/institucional/editar" element={<EditarInstitucionalPage />} />
           <Route path="/pessoas"       element={<Pessoas />} />
           <Route path="/pessoas/nova"  element={<NovaPessoaPage />} />
+          <Route path="/pessoas/:id/editar"  element={<EditarPessoaPage />} />
           <Route path="/beneficiarios" element={<Beneficiarios />} />
+          <Route path="/beneficiarios/novo" element={<BeneficiarioCadastroPage />} />
+          <Route path="/beneficiarios/:id/editar" element={<BeneficiarioCadastroPage />} />
           <Route path="/financeiro"    element={<Financeiro />} />
           <Route path="/financeiro/nova" element={<NovaTransacaoPage />} />
           <Route path="/projetos"      element={<Projetos />} />
@@ -70,12 +116,14 @@ function AppShell({ user, onLogout }) {
           <Route path="/projetos/:id/editar" element={<NovoProjetoPage />} />
           <Route path="/documentos"    element={<Documentos />} />
           <Route path="/captacao"      element={<Captacao />} />
+          <Route path="/captacao/nova" element={<NovaOportunidadePage />} />
+          <Route path="/captacao/:id/dossie" element={<DossieOportunidadePage />} />
           <Route path="/relatorios"    element={<Relatorios />} />
           <Route path="/comunicacao"   element={<Comunicacao />} />
           <Route path="/comunicacao/novo" element={<NovoEnvioPage />} />
           <Route path="/usuarios"      element={<Usuarios />} />
           <Route path="/notas-paulista" element={<NotasPaulista />} />
-          <Route path="/configuracoes" element={<div className="card"><h2 style={{ fontFamily: 'var(--font-display)' }}>Configurações</h2><p style={{ color: 'var(--gray-400)', marginTop: 8 }}>Em breve.</p></div>} />
+          <Route path="/configuracoes" element={<Configuracoes />} />
           <Route path="*"              element={<Navigate to="/" replace />} />
         </Routes>
       </main>

@@ -1,4 +1,5 @@
 import { BarChart3, Download, FileText, Printer, Share2 } from 'lucide-react'
+import { useState } from 'react'
 
 const relatorios = [
   { id: 1, nome: 'Relatório geral da ONG', periodo: '2026', formato: 'PDF / Excel', status: 'Pronto', descricao: 'Resumo institucional, projetos ativos, equipe, beneficiários, finanças e indicadores.' },
@@ -8,6 +9,12 @@ const relatorios = [
 ]
 
 export default function Relatorios() {
+  const [relatorioSelecionado, setRelatorioSelecionado] = useState(null)
+
+  const visualizarRelatorio = (relatorio) => {
+    setRelatorioSelecionado(relatorio)
+  }
+
   const baixarPdf = (nome) => {
     window.print()
     console.info(`Exportando relatório: ${nome}`)
@@ -44,6 +51,12 @@ export default function Relatorios() {
       </div>
 
       <div className="card">
+        {relatorioSelecionado && (
+          <div style={{ borderBottom: '1px solid var(--gray-200)', padding: '16px 20px', background: 'var(--gray-50)' }}>
+            <h3 style={{ marginBottom: 6, color: 'var(--gray-900)' }}>Visualizando: {relatorioSelecionado.nome}</h3>
+            <p style={{ color: 'var(--gray-600)', margin: 0 }}>{relatorioSelecionado.descricao}</p>
+          </div>
+        )}
         <div className="table-wrap">
           <table>
             <thead><tr><th>Relatório</th><th>Descrição</th><th>Período</th><th>Formato</th><th>Status</th><th className="no-print">Ações</th></tr></thead>
@@ -56,7 +69,7 @@ export default function Relatorios() {
                   <td>{relatorio.formato}</td>
                   <td><span className={`badge ${relatorio.status === 'Pronto' ? 'badge-green' : 'badge-yellow'}`}>{relatorio.status}</span></td>
                   <td className="no-print" style={{ display: 'flex', gap: 8 }}>
-                    <button className="btn btn-sm btn-outline">Visualizar</button>
+                    <button className="btn btn-sm btn-outline" onClick={() => visualizarRelatorio(relatorio)}>Visualizar</button>
                     <button className="btn btn-sm btn-primary" onClick={() => baixarPdf(relatorio.nome)}><Download size={13} /> PDF</button>
                   </td>
                 </tr>
