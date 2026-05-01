@@ -1,15 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Heart, Plus, Search, Filter, Phone, Mail, MoreHorizontal, Users, UserCheck, Handshake, Gift } from 'lucide-react'
+import { Heart, Plus, Search, Phone, Mail, Pencil, Users, UserCheck, Handshake, Gift } from 'lucide-react'
 
-const PESSOAS = [
-  { id: 1, nome: 'Maria Silva',      tipo: 'VOLUNTARIO',    status: 'ATIVO',    telefone: '(81) 99123-4567', email: 'maria@email.com',   horas: 124, projetos: 3, inicial: 'MS', cor: '#ec4899' },
-  { id: 2, nome: 'João Costa',       tipo: 'BENEFICIARIO',  status: 'ATIVO',    telefone: '(81) 98765-4321', email: 'joao@email.com',    horas: 0,   projetos: 1, inicial: 'JC', cor: '#a855f7' },
-  { id: 3, nome: 'Ana Beatriz',      tipo: 'MEMBRO',        status: 'ATIVO',    telefone: '(81) 99234-5678', email: 'ana@email.com',     horas: 80,  projetos: 5, inicial: 'AB', cor: '#3b82f6' },
-  { id: 4, nome: 'Carlos Mendes',    tipo: 'DOADOR',        status: 'ATIVO',    telefone: '(81) 97654-3210', email: 'carlos@email.com',  horas: 0,   projetos: 0, inicial: 'CM', cor: '#22c55e' },
-  { id: 5, nome: 'Fernanda Lima',    tipo: 'VOLUNTARIO',    status: 'INATIVO',  telefone: '(81) 96543-2109', email: 'fer@email.com',     horas: 56,  projetos: 2, inicial: 'FL', cor: '#eab308' },
-  { id: 6, nome: 'Roberto Santos',   tipo: 'BENEFICIARIO',  status: 'ATIVO',    telefone: '(81) 95432-1098', email: 'rob@email.com',     horas: 0,   projetos: 2, inicial: 'RS', cor: '#ef4444' },
-]
+import { loadPessoas } from './pessoasStorage'
 
 const tipoConfig = {
   VOLUNTARIO:   { label: 'Voluntário',   badge: 'badge-pink',   icon: UserCheck },
@@ -28,9 +21,14 @@ const STATS = [
 export default function Pessoas() {
   const [busca, setBusca] = useState('')
   const [tipoFiltro, setTipoFiltro] = useState('TODOS')
+  const [pessoas, setPessoas] = useState([])
   const navigate = useNavigate()
 
-  const filtradas = PESSOAS.filter(p => {
+  useEffect(() => {
+    setPessoas(loadPessoas())
+  }, [])
+
+  const filtradas = pessoas.filter(p => {
     const matchBusca = p.nome.toLowerCase().includes(busca.toLowerCase()) || p.email.includes(busca)
     const matchTipo = tipoFiltro === 'TODOS' || p.tipo === tipoFiltro
     return matchBusca && matchTipo
@@ -137,8 +135,8 @@ export default function Pessoas() {
                       </span>
                     </td>
                     <td>
-                      <button className="btn btn-ghost btn-icon btn-sm">
-                        <MoreHorizontal size={16} />
+                      <button className="btn btn-ghost btn-sm" onClick={() => navigate(`/pessoas/${p.id}/editar`)}>
+                        <Pencil size={14} /> Editar
                       </button>
                     </td>
                   </tr>
