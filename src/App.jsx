@@ -12,8 +12,11 @@ import Login from './pages/auth/Login'
 import NotasPaulista from './pages/notas/NotasPaulista'
 import Institucional from './pages/institucional/Institucional'
 import Beneficiarios from './pages/beneficiarios/Beneficiarios'
+import BeneficiarioCadastroPage from './pages/beneficiarios/BeneficiarioCadastroPage'
 import Documentos from './pages/documentos/Documentos'
 import Captacao from './pages/captacao/Captacao'
+import NovaOportunidadePage from './pages/captacao/NovaOportunidadePage'
+import DossieOportunidadePage from './pages/captacao/DossieOportunidadePage'
 import Relatorios from './pages/relatorios/Relatorios'
 import { NovaPessoaPage, EditarPessoaPage, NovaTransacaoPage, NovoEnvioPage, EditarInstitucionalPage } from './pages/cadastros/Cadastros'
 import NovoProjetoPage from './pages/projetos/NovoProjetoPage'
@@ -103,6 +106,8 @@ function AppShell({ user, onLogout }) {
           <Route path="/pessoas/nova"  element={<NovaPessoaPage />} />
           <Route path="/pessoas/:id/editar"  element={<EditarPessoaPage />} />
           <Route path="/beneficiarios" element={<Beneficiarios />} />
+          <Route path="/beneficiarios/novo" element={<BeneficiarioCadastroPage />} />
+          <Route path="/beneficiarios/:id/editar" element={<BeneficiarioCadastroPage />} />
           <Route path="/financeiro"    element={<Financeiro />} />
           <Route path="/financeiro/nova" element={<NovaTransacaoPage />} />
           <Route path="/projetos"      element={<Projetos />} />
@@ -110,6 +115,8 @@ function AppShell({ user, onLogout }) {
           <Route path="/projetos/novo" element={<NovoProjetoPage />} />
           <Route path="/documentos"    element={<Documentos />} />
           <Route path="/captacao"      element={<Captacao />} />
+          <Route path="/captacao/nova" element={<NovaOportunidadePage />} />
+          <Route path="/captacao/:id/dossie" element={<DossieOportunidadePage />} />
           <Route path="/relatorios"    element={<Relatorios />} />
           <Route path="/comunicacao"   element={<Comunicacao />} />
           <Route path="/comunicacao/novo" element={<NovoEnvioPage />} />

@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { FileText, Upload, Download, AlertTriangle, FolderOpen, Search, Plus, Eye, ChevronDown, Trash2 } from 'lucide-react'
+import { useMemo, useRef, useState } from 'react'
+import { FileText, Upload, Download, AlertTriangle, FolderOpen, Search, Plus, Eye, ChevronDown } from 'lucide-react'
 
 const docsIniciais = [
   { id: 1, nome: 'Estatuto Social.pdf', pasta: 'Institucional', tipo: 'PDF', projeto: 'ONG', vencimento: 'Sem vencimento', status: 'ATUALIZADO' },
@@ -48,7 +48,6 @@ export default function Documentos() {
   const [busca, setBusca] = useState('')
   const [docs, setDocs] = useState(docsIniciais)
   const [menuAberto, setMenuAberto] = useState(false)
-  const [previewDoc, setPreviewDoc] = useState(null)
   const uploadArquivoRef = useRef(null)
   const uploadPastaRef = useRef(null)
 
@@ -91,13 +90,9 @@ export default function Documentos() {
       window.alert('Visualização disponível apenas para arquivos enviados nesta sessão.')
       return
     }
-
     const url = URL.createObjectURL(doc.file)
-    setPreviewDoc({
-      nome: doc.nome,
-      type: doc.file.type || 'application/octet-stream',
-      url,
-    })
+    window.open(url, '_blank', 'noopener,noreferrer')
+    setTimeout(() => URL.revokeObjectURL(url), 60_000)
   }
 
   const baixarDocumento = (doc) => {
@@ -114,25 +109,6 @@ export default function Documentos() {
     link.click()
     link.remove()
     URL.revokeObjectURL(url)
-  }
-
-
-  useEffect(() => {
-    return () => {
-      if (previewDoc?.url) URL.revokeObjectURL(previewDoc.url)
-    }
-  }, [previewDoc])
-
-  const fecharPreview = () => {
-    if (previewDoc?.url) URL.revokeObjectURL(previewDoc.url)
-    setPreviewDoc(null)
-  }
-
-  const excluirDocumento = (doc) => {
-    const confirmar = window.confirm(`Deseja excluir \"${doc.nome}\"?`)
-    if (!confirmar) return
-
-    setDocs((prev) => prev.filter((item) => item.id !== doc.id))
   }
 
   return (
@@ -186,7 +162,6 @@ export default function Documentos() {
                   <td style={{ display: 'flex', gap: 8 }}>
                     <button className="btn btn-sm btn-outline" onClick={() => visualizarDocumento(doc)}><Eye size={13} /> Ver</button>
                     <button className="btn btn-sm btn-outline" onClick={() => baixarDocumento(doc)}><Download size={13} /> Baixar</button>
-                    <button className="btn btn-sm btn-outline" onClick={() => excluirDocumento(doc)}><Trash2 size={13} /> Excluir</button>
                   </td>
                 </tr>
               ))}

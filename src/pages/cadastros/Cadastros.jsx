@@ -44,6 +44,8 @@ export function EditarPessoaPage() {
 }
 
 export function NovaTransacaoPage() {
+  const navigate = useNavigate()
+
   return (
     <CadastroEntity titulo="Nova transação" subtitulo="Registre receitas e despesas da organização" cor="var(--green-500)"
       campos={[
@@ -60,8 +62,30 @@ export function NovaTransacaoPage() {
           ],
         },
         { name: 'valor', label: 'Valor', type: 'number', placeholder: '0,00' },
-        { name: 'tipo', label: 'Tipo', placeholder: 'RECEITA ou DESPESA' },
+        {
+          name: 'tipo',
+          label: 'Tipo (tags)',
+          type: 'tag-selector',
+          options: [
+            { name: 'RECEITA', color: '#22c55e' },
+            { name: 'DESPESA', color: '#ef4444' },
+          ],
+        },
       ]}
+      onSave={(form) => {
+        addTransacaoStorage({
+          ...form,
+          valor: Number(form.valor || 0),
+          status: form.tipo === 'RECEITA' ? 'RECEBIDA' : 'APROVADA',
+          data: new Date().toISOString().slice(0, 10),
+          vencimento: new Date().toISOString().slice(0, 10),
+          pagamento: null,
+          projeto: 'Fundo Geral',
+          conta: 'Conta principal ONG',
+          comprovante: 'PENDENTE',
+        })
+        navigate('/financeiro')
+      }}
     />
   )
 }
