@@ -5,6 +5,7 @@ import {
   Building2, FileText, HandCoins, BarChart3, UsersRound,
   PanelLeftClose, PanelLeftOpen
 } from 'lucide-react'
+import { loadInstitucional } from '../../pages/institucional/institucionalStorage'
 
 const NAV = [
   {
@@ -43,15 +44,20 @@ const NAV = [
 ]
 
 export default function Sidebar({ user, onLogout, collapsed = false, onToggleCollapsed }) {
+  const institucional = loadInstitucional()
+  const logo = institucional.logoUrl
+  const nome = institucional.nomeFantasia || institucional.nome || 'ONGPlatform'
+  const slogan = institucional.slogan || 'Gestão Social'
+
   return (
     <aside className="app-sidebar" aria-label="Menu principal">
       <div className="sidebar-logo">
-        <div className="sidebar-logo-icon" title={collapsed ? 'ONGPlatform' : undefined}>
-          <Leaf size={18} color="#fff" strokeWidth={2.5} />
+        <div className="sidebar-logo-icon" title={collapsed ? nome : undefined}>
+          {logo ? <img src={logo} alt="Logo institucional" /> : <Leaf size={18} color="#fff" strokeWidth={2.5} />}
         </div>
         <div className="sidebar-logo-content">
-          <div className="sidebar-logo-text">ONGPlatform</div>
-          <div className="sidebar-logo-sub">Gestão Social</div>
+          <div className="sidebar-logo-text">{nome}</div>
+          <div className="sidebar-logo-sub">{slogan}</div>
         </div>
         <button
           className="sidebar-collapse-btn"
