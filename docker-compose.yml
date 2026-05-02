@@ -1,6 +1,6 @@
 # ─────────────────────────────────────────────────────────
 #  ONG Platform — Docker Compose
-#  Containers: frontend (Nginx) + db (PostgreSQL)
+#  Containers: frontend (Nginx) + backend (Node API) + db (PostgreSQL)
 #  Uso: docker compose up -d --build
 # ─────────────────────────────────────────────────────────
 
@@ -15,11 +15,37 @@ services:
     restart: unless-stopped
     ports:
       - "${FRONTEND_PORT:-8977}:80"
+    depends_on:
+      - backend
     networks:
       - ong_net
-    # Não depende do db — é um SPA estático servido pelo Nginx
 
-  # ── 2. Banco de dados (PostgreSQL) ────────────────────
+  # ── 2. Backend/API (Node + Express) ───────────────────
+  backend:
+    build:
+      context: ./backend
+    container_name: ong-backend
+    restart: unless-stopped
+    environment:
+      PORT: 3498
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-ong_platform}
+      DB_USER: ${DB_USER:-ong}
+      DB_PASSWORD: ${DB_PASSWORD:-ong123}
+      MAX_FILE_SIZE: ${MAX_FILE_SIZE:-52428800}
+      UPLOAD_DIR: /app/uploads
+    ports:
+      - "${BACKEND_PORT:-3498}:3498"
+    volumes:
+      - uploads_data:/app/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - ong_net
+
+  # ── 3. Banco de dados (PostgreSQL) ────────────────────
   db:
     image: postgres:16-alpine
     container_name: ong-postgres
@@ -44,6 +70,8 @@ services:
 # ── Volumes ────────────────────────────────────────────
 volumes:
   postgres_data:
+    driver: local
+  uploads_data:
     driver: local
 
 # ── Rede interna ───────────────────────────────────────
