@@ -24,6 +24,7 @@ import { Search, Bell, Settings } from 'lucide-react'
 import Configuracoes from './pages/configuracoes/Configuracoes'
 
 const AUTH_STORAGE_KEY = 'ong_platform_auth_user'
+const SIDEBAR_COLLAPSED_KEY = 'ong_platform_sidebar_collapsed'
 
 function carregarUsuarioSalvo() {
   try {
@@ -35,9 +36,18 @@ function carregarUsuarioSalvo() {
   }
 }
 
+function carregarSidebarRecolhida() {
+  try {
+    return localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === 'true'
+  } catch {
+    return false
+  }
+}
+
 function AppShell({ user, onLogout }) {
   const navigate = useNavigate()
   const [menuAberto, setMenuAberto] = useState(false)
+  const [sidebarRecolhida, setSidebarRecolhida] = useState(() => carregarSidebarRecolhida())
   const [perfilDraft, setPerfilDraft] = useState(() => ({
     nome: user?.nome || '',
     fotoUrl: user?.fotoUrl || '',
@@ -51,9 +61,17 @@ function AppShell({ user, onLogout }) {
     setMenuAberto(false)
   }
 
+  const alternarSidebar = () => {
+    setSidebarRecolhida((atual) => {
+      const proximo = !atual
+      localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(proximo))
+      return proximo
+    })
+  }
+
   return (
-    <div className="app-shell">
-      <Sidebar user={user} onLogout={onLogout} />
+    <div className={`app-shell ${sidebarRecolhida ? 'sidebar-collapsed' : ''}`}>
+      <Sidebar user={user} onLogout={onLogout} collapsed={sidebarRecolhida} onToggleCollapsed={alternarSidebar} />
 
       {/* Topbar */}
       <header className="app-topbar">
