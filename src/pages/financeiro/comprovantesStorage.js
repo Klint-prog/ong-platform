@@ -1,5 +1,6 @@
 const KEY = 'ong_financeiro_comprovantes'
 const INIT_KEY = 'ong_financeiro_comprovantes_initialized'
+const TRANSACOES_KEY = 'ong_financeiro_transacoes'
 
 function gerarId(prefixo = 'comprovante') {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -42,6 +43,18 @@ function salvarArray(items) {
   window.localStorage.setItem(KEY, JSON.stringify(items))
   window.localStorage.setItem(INIT_KEY, 'true')
   return items
+}
+
+function sincronizarTransacoes(transacaoId) {
+  if (typeof window === 'undefined' || !transacaoId) return
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(TRANSACOES_KEY) || '[]')
+    const transacoes = Array.isArray(parsed) ? parsed : []
+    const next = transacoes.filter((item) => String(item.id) !== String(transacaoId))
+    window.localStorage.setItem(TRANSACOES_KEY, JSON.stringify(next))
+  } catch {
+    // mantém operação local segura
+  }
 }
 
 function normalizarValidacao(comprovante) {
@@ -109,8 +122,10 @@ export function updateComprovanteStorage(comprovante) {
 
 export function deleteComprovanteStorage(id) {
   const current = listComprovantesStorage()
+  const removido = current.find((item) => String(item.id) === String(id))
   const next = current.filter((item) => String(item.id) !== String(id))
   salvarArray(next)
+  if (removido?.transacaoId) sincronizarTransacoes(removido.transacaoId)
   return next
 }
 
