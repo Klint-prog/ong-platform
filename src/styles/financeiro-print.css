@@ -243,6 +243,21 @@
   font-size: 13px;
 }
 
+.financeiro-doc-footer div:last-child::after {
+  content: 'Assinatura eletrônica interna: este documento foi validado no sistema ONGPlatform pelo usuário responsável, com registro de data/hora, código de referência no cabeçalho e trilha interna de auditoria.';
+  display: block;
+  margin-top: 10px;
+  padding: 10px 12px;
+  border: 1px solid #bbf7d0;
+  border-left: 4px solid var(--financeiro-accent);
+  border-radius: 10px;
+  background: #f0fdf4;
+  color: #166534;
+  font-size: 11px;
+  line-height: 1.45;
+  font-weight: 600;
+}
+
 @media (max-width: 760px) {
   .financeiro-preview-overlay {
     left: 0;
@@ -376,6 +391,15 @@
     grid-template-columns: 1fr 1fr !important;
     gap: 18px !important;
     margin-top: 34px !important;
+  }
+
+  .financeiro-doc-footer div:last-child::after {
+    color: #166534 !important;
+    background: #f0fdf4 !important;
+    border: 1px solid #bbf7d0 !important;
+    border-left: 4px solid var(--financeiro-accent) !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
 
   .financeiro-doc-header,
