@@ -7,6 +7,78 @@
   margin: 12mm;
 }
 
+/* ================================================================
+   Documentos — correção da pré-visualização maximizada
+   ================================================================ */
+
+/*
+  O preview de documentos é renderizado com estilos inline no componente.
+  Estas regras usam maior especificidade para fazer o modal respeitar a área
+  útil da aplicação: abaixo da topbar e ao lado da sidebar, inclusive no modo
+  maximizado.
+*/
+.mod-documentos > div[style*='rgba(15, 23, 42, 0.62)'] {
+  inset: auto !important;
+  top: var(--topbar-h, 64px) !important;
+  left: var(--sidebar-current-w, 280px) !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: auto !important;
+  height: auto !important;
+  max-width: none !important;
+  max-height: none !important;
+  padding: 20px !important;
+  box-sizing: border-box !important;
+  display: grid !important;
+  place-items: center !important;
+  overflow: hidden !important;
+}
+
+.mod-documentos > div[style*='rgba(15, 23, 42, 0.62)'] > .card {
+  max-width: 100% !important;
+  max-height: calc(100dvh - var(--topbar-h, 64px) - 40px) !important;
+  min-width: min(980px, 100%) !important;
+  min-height: min(620px, calc(100dvh - var(--topbar-h, 64px) - 40px)) !important;
+  box-sizing: border-box !important;
+}
+
+/* Estado normal da janela de preview. */
+.mod-documentos > div[style*='rgba(15, 23, 42, 0.62)'] > .card[style*='calc(100vw - 56px)'] {
+  width: min(1380px, 100%) !important;
+  height: min(86dvh, calc(100dvh - var(--topbar-h, 64px) - 40px), 920px) !important;
+}
+
+/* Estado maximizado: ocupa toda a área útil, sem cobrir a topbar. */
+.mod-documentos > div[style*='rgba(15, 23, 42, 0.62)'] > .card[style*='calc(100vw - 40px)'] {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: none !important;
+  max-height: calc(100dvh - var(--topbar-h, 64px) - 40px) !important;
+  resize: none !important;
+}
+
+.mod-documentos > div[style*='rgba(15, 23, 42, 0.62)'] > .card > div:last-child {
+  min-width: 0 !important;
+  min-height: 0 !important;
+}
+
+.mod-documentos > div[style*='rgba(15, 23, 42, 0.62)'] iframe {
+  max-height: calc(100dvh - var(--topbar-h, 64px) - 150px) !important;
+}
+
+@media (max-width: 760px) {
+  .mod-documentos > div[style*='rgba(15, 23, 42, 0.62)'] {
+    left: 0 !important;
+    padding: 12px !important;
+  }
+
+  .mod-documentos > div[style*='rgba(15, 23, 42, 0.62)'] > .card {
+    min-width: 0 !important;
+    width: 100% !important;
+    max-height: calc(100dvh - var(--topbar-h, 64px) - 24px) !important;
+  }
+}
+
 @media print {
   html,
   body,
