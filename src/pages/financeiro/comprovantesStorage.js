@@ -1,6 +1,7 @@
 const KEY = 'ong_financeiro_comprovantes'
 const INIT_KEY = 'ong_financeiro_comprovantes_initialized'
 const TRANSACOES_KEY = 'ong_financeiro_transacoes'
+const ORCAMENTOS_KEY = 'ong_financeiro_orcamentos'
 
 function gerarId(prefixo = 'comprovante') {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -38,6 +39,24 @@ function lerArray() {
   }
 }
 
+function lerArrayKey(key) {
+  if (typeof window === 'undefined') return []
+
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(key) || '[]')
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+
+function salvarArrayKey(key, items) {
+  if (typeof window === 'undefined') return []
+  const normalized = Array.isArray(items) ? items : []
+  window.localStorage.setItem(key, JSON.stringify(normalized))
+  return normalized
+}
+
 function salvarArray(items) {
   if (typeof window === 'undefined') return []
   window.localStorage.setItem(KEY, JSON.stringify(items))
@@ -45,16 +64,40 @@ function salvarArray(items) {
   return items
 }
 
-function sincronizarTransacoes(transacaoId) {
+function sincronizarRemocaoTransacoes(transacaoId) {
   if (typeof window === 'undefined' || !transacaoId) return false
   try {
-    const parsed = JSON.parse(window.localStorage.getItem(TRANSACOES_KEY) || '[]')
-    const transacoes = Array.isArray(parsed) ? parsed : []
+    const transacoes = lerArrayKey(TRANSACOES_KEY)
     const next = transacoes.filter((item) => String(item.id) !== String(transacaoId))
-    window.localStorage.setItem(TRANSACOES_KEY, JSON.stringify(next))
+    salvarArrayKey(TRANSACOES_KEY, next)
     return transacoes.length !== next.length
   } catch {
     return false
+  }
+}
+
+function sincronizarValidacaoFinanceira(comprovante) {
+  if (typeof window === 'undefined' || comprovante?.status !== 'VALIDO') return
+
+  const dadosValidacao = {
+    comprovante: 'VALIDO',
+    comprovanteStatus: 'VALIDO',
+    validadoEm: comprovante.validadoEm,
+    validadoPor: comprovante.validadoPor || comprovante.validador || 'Admin',
+    codigoVerificacao: comprovante.codigoVerificacao,
+    hashDocumento: comprovante.hashDocumento,
+  }
+
+  if (comprovante.transacaoId) {
+    const transacoes = lerArrayKey(TRANSACOES_KEY)
+    const next = transacoes.map((item) => String(item.id) === String(comprovante.transacaoId) ? { ...item, ...dadosValidacao } : item)
+    salvarArrayKey(TRANSACOES_KEY, next)
+  }
+
+  if (comprovante.orcamentoId) {
+    const orcamentos = lerArrayKey(ORCAMENTOS_KEY)
+    const next = orcamentos.map((item) => String(item.id) === String(comprovante.orcamentoId) ? { ...item, ...dadosValidacao, status: item.status || 'APROVADA' } : item)
+    salvarArrayKey(ORCAMENTOS_KEY, next)
   }
 }
 
@@ -98,7 +141,9 @@ export function listComprovantesStorage() {
 }
 
 export function saveComprovantesStorage(comprovantes) {
-  return salvarArray(comprovantes.map(normalizarValidacao))
+  const next = comprovantes.map(normalizarValidacao)
+  next.forEach(sincronizarValidacaoFinanceira)
+  return salvarArray(next)
 }
 
 export function addComprovanteStorage(comprovante) {
@@ -110,6 +155,7 @@ export function addComprovanteStorage(comprovante) {
   })
 
   salvarArray([nextItem, ...current.filter((item) => String(item.id) !== String(nextItem.id))])
+  sincronizarValidacaoFinanceira(nextItem)
   return nextItem
 }
 
@@ -118,6 +164,7 @@ export function updateComprovanteStorage(comprovante) {
   const nextItem = normalizarValidacao(comprovante)
   const next = current.map((item) => String(item.id) === String(nextItem.id) ? nextItem : item)
   salvarArray(next)
+  sincronizarValidacaoFinanceira(nextItem)
   return nextItem
 }
 
@@ -126,7 +173,7 @@ export function deleteComprovanteStorage(id) {
   const removido = current.find((item) => String(item.id) === String(id))
   const next = current.filter((item) => String(item.id) !== String(id))
   salvarArray(next)
-  const removeuTransacao = removido?.transacaoId ? sincronizarTransacoes(removido.transacaoId) : false
+  const removeuTransacao = removido?.transacaoId ? sincronizarRemocaoTransacoes(removido.transacaoId) : false
 
   if (removeuTransacao && typeof window !== 'undefined') {
     setTimeout(() => window.location.reload(), 80)
