@@ -1,0 +1,202 @@
+/* ================================================================
+   ONG Platform — impressão profissional de relatórios em A4
+   ================================================================ */
+
+@page {
+  size: A4 portrait;
+  margin: 12mm;
+}
+
+@media print {
+  html,
+  body,
+  #root {
+    width: 210mm;
+    min-height: 297mm;
+    background: #fff !important;
+  }
+
+  body {
+    margin: 0 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /*
+    O relatório é aberto dentro de um modal grande da tela.
+    Na impressão, escondemos toda a aplicação e deixamos visível apenas
+    a área do relatório, sem overlay, sem sidebar, sem topbar e sem painel lateral.
+  */
+  body * {
+    visibility: hidden !important;
+  }
+
+  .report-print-area,
+  .report-print-area * {
+    visibility: visible !important;
+  }
+
+  .report-print-area {
+    position: absolute !important;
+    inset: 0 auto auto 0 !important;
+    width: 100% !important;
+    max-width: none !important;
+    height: auto !important;
+    max-height: none !important;
+    min-height: auto !important;
+    overflow: visible !important;
+    display: block !important;
+    resize: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    background: #fff !important;
+  }
+
+  /* Remove a estrutura em duas colunas usada no modal de visualização. */
+  .report-print-area > div:last-child {
+    display: block !important;
+    grid-template-columns: 1fr !important;
+    gap: 0 !important;
+    min-height: auto !important;
+  }
+
+  .report-print-area main {
+    display: block !important;
+    width: 100% !important;
+    max-width: none !important;
+    overflow: visible !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: #fff !important;
+  }
+
+  .report-print-area aside,
+  .report-print-area .no-print,
+  .app-sidebar,
+  .app-topbar,
+  .no-print {
+    display: none !important;
+  }
+
+  .report-print-area .report-cover {
+    border: 1px solid #e5e7eb !important;
+    border-left: 5px solid var(--mod-color, var(--blue-500)) !important;
+    border-radius: 10px !important;
+    padding: 10mm !important;
+    margin: 0 0 8mm !important;
+    background: #fff !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .report-print-area h1 {
+    font-size: 24pt !important;
+    line-height: 1.15 !important;
+    margin: 0 0 4mm !important;
+    color: #111827 !important;
+  }
+
+  .report-print-area h2 {
+    font-size: 18pt !important;
+  }
+
+  .report-print-area h3 {
+    font-size: 12pt !important;
+    margin: 6mm 0 3mm !important;
+    color: #111827 !important;
+  }
+
+  .report-print-area p,
+  .report-print-area div,
+  .report-print-area span,
+  .report-print-area td,
+  .report-print-area th {
+    line-height: 1.35 !important;
+  }
+
+  .report-print-area .grid-4 {
+    display: grid !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    gap: 4mm !important;
+    margin-bottom: 8mm !important;
+  }
+
+  .report-print-area .stat-card {
+    display: block !important;
+    min-height: 24mm !important;
+    padding: 5mm !important;
+    border: 1px solid #e5e7eb !important;
+    border-radius: 10px !important;
+    box-shadow: none !important;
+    background: #fff !important;
+    overflow: visible !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .report-print-area .stat-card::after,
+  .report-print-area .stat-icon {
+    display: none !important;
+  }
+
+  .report-print-area .stat-label {
+    font-size: 8pt !important;
+    letter-spacing: .4px !important;
+    margin-bottom: 2mm !important;
+  }
+
+  .report-print-area .stat-value {
+    font-size: 18pt !important;
+    line-height: 1.1 !important;
+    white-space: normal !important;
+  }
+
+  .report-print-area .table-wrap {
+    overflow: visible !important;
+    width: 100% !important;
+    margin-bottom: 7mm !important;
+  }
+
+  .report-print-area table {
+    width: 100% !important;
+    table-layout: fixed !important;
+    border-collapse: collapse !important;
+    font-size: 9.5pt !important;
+  }
+
+  .report-print-area th,
+  .report-print-area td {
+    padding: 3mm !important;
+    border-bottom: 1px solid #e5e7eb !important;
+    overflow-wrap: anywhere !important;
+    word-break: normal !important;
+    vertical-align: top !important;
+  }
+
+  .report-print-area th {
+    color: #374151 !important;
+    background: #f9fafb !important;
+  }
+
+  .report-print-area .badge {
+    border: 1px solid #d1d5db !important;
+    background: #fff !important;
+    color: #111827 !important;
+    border-radius: 999px !important;
+    padding: 1.5mm 3mm !important;
+  }
+
+  .report-print-area div[style*='grid'] {
+    max-width: 100% !important;
+  }
+
+  .report-print-area div[style*='border: 1px solid var(--gray-100)'] {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}
