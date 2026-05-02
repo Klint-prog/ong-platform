@@ -46,14 +46,15 @@ function salvarArray(items) {
 }
 
 function sincronizarTransacoes(transacaoId) {
-  if (typeof window === 'undefined' || !transacaoId) return
+  if (typeof window === 'undefined' || !transacaoId) return false
   try {
     const parsed = JSON.parse(window.localStorage.getItem(TRANSACOES_KEY) || '[]')
     const transacoes = Array.isArray(parsed) ? parsed : []
     const next = transacoes.filter((item) => String(item.id) !== String(transacaoId))
     window.localStorage.setItem(TRANSACOES_KEY, JSON.stringify(next))
+    return transacoes.length !== next.length
   } catch {
-    // mantém operação local segura
+    return false
   }
 }
 
@@ -125,7 +126,12 @@ export function deleteComprovanteStorage(id) {
   const removido = current.find((item) => String(item.id) === String(id))
   const next = current.filter((item) => String(item.id) !== String(id))
   salvarArray(next)
-  if (removido?.transacaoId) sincronizarTransacoes(removido.transacaoId)
+  const removeuTransacao = removido?.transacaoId ? sincronizarTransacoes(removido.transacaoId) : false
+
+  if (removeuTransacao && typeof window !== 'undefined') {
+    setTimeout(() => window.location.reload(), 80)
+  }
+
   return next
 }
 
