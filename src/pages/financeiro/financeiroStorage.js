@@ -30,13 +30,19 @@ function normalizarTexto(value) {
   return String(value || '').trim().toLowerCase()
 }
 
+function transacaoValidada(transacao) {
+  return transacao.comprovante === 'VALIDO' || transacao.comprovanteStatus === 'VALIDO' || Boolean(transacao.validadoEm)
+}
+
 function transacaoMovimentaSaldo(transacao) {
+  if (!transacaoValidada(transacao)) return false
+
   if (transacao.tipo === 'RECEITA') {
-    return transacao.status === 'RECEBIDA'
+    return ['RECEBIDA', 'PREVISTA', 'APROVADA'].includes(transacao.status)
   }
 
   if (transacao.tipo === 'DESPESA') {
-    return transacao.status === 'PAGA'
+    return ['PAGA', 'PREVISTA', 'APROVADA', 'VENCIDA'].includes(transacao.status)
   }
 
   return false
