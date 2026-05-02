@@ -1,17 +1,33 @@
-import { Building2, FileCheck2, ShieldCheck, Users, MapPin, Upload, Eye, Download, ExternalLink, FileText, X } from 'lucide-react'
+import { Building2, FileCheck2, ShieldCheck, Users, MapPin, Upload, Eye, Download, ExternalLink, FileText, X, Trash2 } from 'lucide-react'
 import { useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { loadInstitucional, saveInstitucional } from './institucionalStorage'
 import { AV_VADAI_LOGO_DATA_URL } from '../financeiro/financeiroLogo'
 
 const DOCS_KEY = 'ong_institucional_documentos_criticos'
+const MAX_FILE_SIZE_BYTES = 4 * 1024 * 1024
 
 const documentosPadrao = [
-  { id: 'estatuto-social', nome: 'Estatuto social', status: 'Atualizado', vencimento: 'Sem vencimento', badge: 'badge-green' },
-  { id: 'ata-eleicao-diretoria', nome: 'Ata de eleição da diretoria', status: 'Válida', vencimento: '31/12/2027', badge: 'badge-green' },
-  { id: 'certidao-negativa-federal', nome: 'Certidão negativa federal', status: 'Vence em breve', vencimento: '20/06/2026', badge: 'badge-yellow' },
-  { id: 'comprovante-endereco', nome: 'Comprovante de endereço', status: 'Atualizado', vencimento: '12/2026', badge: 'badge-green' },
+  { id: 'estatuto-social', nome: 'Estatuto social', status: 'Pendente de arquivo', vencimento: 'Sem vencimento', badge: 'badge-yellow' },
+  { id: 'ata-eleicao-diretoria', nome: 'Ata de eleição da diretoria', status: 'Pendente de arquivo', vencimento: '31/12/2027', badge: 'badge-yellow' },
+  { id: 'certidao-negativa-federal', nome: 'Certidão negativa federal', status: 'Pendente de arquivo', vencimento: '20/06/2026', badge: 'badge-yellow' },
+  { id: 'comprovante-endereco', nome: 'Comprovante de endereço', status: 'Pendente de arquivo', vencimento: '12/2026', badge: 'badge-yellow' },
 ]
+
+function documentoSemArquivo(doc) {
+  const base = documentosPadrao.find((item) => item.id === doc.id) || doc
+  return {
+    ...base,
+    possuiArquivo: false,
+    nomeArquivo: '',
+    mimeType: '',
+    tamanho: 0,
+    conteudo: '',
+    atualizadoEm: '',
+    status: 'Pendente de arquivo',
+    badge: 'badge-yellow',
+  }
+}
 
 function carregarDocumentosCriticos() {
   if (typeof window === 'undefined') return documentosPadrao
@@ -26,8 +42,14 @@ function carregarDocumentosCriticos() {
 }
 
 function salvarDocumentosCriticos(documentos) {
-  if (typeof window !== 'undefined') localStorage.setItem(DOCS_KEY, JSON.stringify(documentos))
-  return documentos
+  if (typeof window === 'undefined') return documentos
+  try {
+    localStorage.setItem(DOCS_KEY, JSON.stringify(documentos))
+    return documentos
+  } catch (error) {
+    window.alert('Não foi possível salvar este arquivo no navegador. O limite local foi atingido. Tente remover documentos antigos ou usar um PDF menor. Quando houver backend, o ideal é salvar esses arquivos no servidor ou storage.')
+    return carregarDocumentosCriticos()
+  }
 }
 
 function arquivoParaDataUrl(file) {
@@ -116,6 +138,13 @@ export default function Institucional() {
   const atualizarDocumento = async (doc, event) => {
     const file = event.target.files?.[0]
     if (!file) return
+
+    if (file.size > MAX_FILE_SIZE_BYTES) {
+      window.alert(`Arquivo muito grande para armazenamento local. Limite atual: ${formatBytes(MAX_FILE_SIZE_BYTES)}. Arquivo selecionado: ${formatBytes(file.size)}.`)
+      event.target.value = ''
+      return
+    }
+
     const conteudo = await arquivoParaDataUrl(file)
     const atualizado = {
       ...doc,
@@ -128,9 +157,18 @@ export default function Institucional() {
       badge: 'badge-green',
       atualizadoEm: new Date().toISOString(),
     }
-    const next = documentosCriticos.map((item) => item.id === doc.id ? atualizado : item)
-    setDocumentosCriticos(salvarDocumentosCriticos(next))
+    const tentativa = documentosCriticos.map((item) => item.id === doc.id ? atualizado : item)
+    const next = salvarDocumentosCriticos(tentativa)
+    setDocumentosCriticos(next)
     event.target.value = ''
+  }
+
+  const removerDocumento = (doc) => {
+    if (!doc.conteudo) return
+    if (!window.confirm(`Remover o arquivo anexado em "${doc.nome}"? O tipo do documento continuará na lista para novo upload.`)) return
+    const next = documentosCriticos.map((item) => item.id === doc.id ? documentoSemArquivo(doc) : item)
+    setDocumentosCriticos(salvarDocumentosCriticos(next))
+    setPreviewDoc((atual) => atual?.id === doc.id ? null : atual)
   }
 
   const abrirPreview = (doc) => {
@@ -207,6 +245,7 @@ export default function Institucional() {
 
       <section className="card" style={{ marginTop: 24 }}>
         <h2 style={{ fontFamily: 'var(--font-display)', marginBottom: 14 }}>Documentos institucionais críticos</h2>
+        <p style={{ marginBottom: 14, color: 'var(--gray-500)', fontSize: 13 }}>Use Alterar documento para substituir arquivo errado ou atualizar uma versão. Use Remover arquivo para limpar o anexo e enviar outro depois.</p>
         <div className="table-wrap">
           <table>
             <thead><tr><th>Documento</th><th>Status</th><th>Vencimento</th><th>Arquivo</th><th>Ação</th></tr></thead>
@@ -224,6 +263,7 @@ export default function Institucional() {
                       <button className="btn btn-sm btn-primary" style={{ '--mod-color': 'var(--slate-500)' }} onClick={() => fileInputs.current[doc.id]?.click()}>
                         <Upload size={13} /> {doc.conteudo ? 'Alterar documento' : 'Inserir documento'}
                       </button>
+                      {doc.conteudo && <button className="btn btn-sm btn-outline" onClick={() => removerDocumento(doc)}><Trash2 size={13} /> Remover arquivo</button>}
                       <input ref={(el) => { fileInputs.current[doc.id] = el }} type="file" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt" style={{ display: 'none' }} onChange={(event) => atualizarDocumento(doc, event)} />
                     </div>
                   </td>
@@ -234,12 +274,12 @@ export default function Institucional() {
         </div>
       </section>
 
-      {previewDoc && <InstitucionalPreviewModal doc={previewDoc} maximizado={previewMaximizado} onToggleMaximizado={() => setPreviewMaximizado((v) => !v)} onClose={() => setPreviewDoc(null)} />}
+      {previewDoc && <InstitucionalPreviewModal doc={previewDoc} maximizado={previewMaximizado} onToggleMaximizado={() => setPreviewMaximizado((v) => !v)} onClose={() => setPreviewDoc(null)} onReplace={() => fileInputs.current[previewDoc.id]?.click()} onRemove={() => removerDocumento(previewDoc)} />}
     </div>
   )
 }
 
-function InstitucionalPreviewModal({ doc, maximizado, onToggleMaximizado, onClose }) {
+function InstitucionalPreviewModal({ doc, maximizado, onToggleMaximizado, onClose, onReplace, onRemove }) {
   const podePreview = doc.conteudo && (doc.mimeType?.startsWith('image/') || doc.mimeType === 'application/pdf')
   const largura = maximizado ? 'calc(100vw - 40px)' : 'min(1380px, calc(100vw - 56px))'
   const altura = maximizado ? 'calc(100vh - 40px)' : 'min(86vh, 920px)'
@@ -279,6 +319,8 @@ function InstitucionalPreviewModal({ doc, maximizado, onToggleMaximizado, onClos
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               {podePreview && <button className="btn btn-outline" onClick={() => abrirNovaAba(doc)}><ExternalLink size={14} /> Nova aba</button>}
               <button className="btn btn-outline" onClick={() => baixarArquivo(doc)}><Download size={14} /> Baixar</button>
+              <button className="btn btn-outline" onClick={onReplace}><Upload size={14} /> Substituir</button>
+              <button className="btn btn-outline" onClick={onRemove}><Trash2 size={14} /> Remover</button>
             </div>
           </aside>
         </div>
