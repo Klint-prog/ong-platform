@@ -267,24 +267,13 @@
 }
 
 @media print {
+  body * {
+    visibility: hidden !important;
+  }
+
   .financeiro-documento-print,
   .financeiro-documento-print * {
     visibility: visible !important;
-  }
-
-  .financeiro-documento-print {
-    position: absolute !important;
-    inset: 0 auto auto 0 !important;
-    width: 100% !important;
-    max-width: none !important;
-    min-height: auto !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    border: 0 !important;
-    border-radius: 0 !important;
-    box-shadow: none !important;
-    background: #fff !important;
-    color: #111827 !important;
   }
 
   .financeiro-preview-overlay,
@@ -300,6 +289,95 @@
     background: transparent !important;
   }
 
+  .financeiro-documento-print {
+    position: absolute !important;
+    inset: 0 auto auto 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 28px !important;
+    border: 1px solid #e5e7eb !important;
+    border-radius: 18px !important;
+    box-shadow: none !important;
+    background: #fff !important;
+    color: #111827 !important;
+    box-sizing: border-box !important;
+    transform-origin: top left !important;
+  }
+
+  /* A impressão deve preservar exatamente o layout da pré-visualização,
+     mesmo quando o navegador aplica largura pequena para o preview de impressão. */
+  .financeiro-doc-header {
+    display: flex !important;
+    flex-direction: row !important;
+    justify-content: space-between !important;
+    gap: 18px !important;
+    border-bottom: 4px solid var(--financeiro-accent) !important;
+    padding-bottom: 18px !important;
+    margin-bottom: 22px !important;
+  }
+
+  .financeiro-doc-brand {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: 16px !important;
+  }
+
+  .financeiro-doc-brand img {
+    width: 118px !important;
+    max-width: 118px !important;
+    height: auto !important;
+    object-fit: contain !important;
+  }
+
+  .financeiro-doc-title {
+    display: flex !important;
+    flex-direction: row !important;
+    justify-content: space-between !important;
+    align-items: stretch !important;
+    gap: 20px !important;
+    margin-bottom: 22px !important;
+    padding: 18px !important;
+    border-radius: 16px !important;
+    background: linear-gradient(135deg, #f0fdf4, #eff6ff) !important;
+  }
+
+  .financeiro-doc-title h2 {
+    font-size: 27px !important;
+    line-height: 1.1 !important;
+  }
+
+  .financeiro-doc-total {
+    min-width: 210px !important;
+    display: grid !important;
+    align-content: center !important;
+    justify-items: end !important;
+    color: #fff !important;
+    border-radius: 14px !important;
+    padding: 16px !important;
+  }
+
+  .financeiro-doc-org {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 12px !important;
+    margin-bottom: 22px !important;
+  }
+
+  .financeiro-doc-table {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+  }
+
+  .financeiro-doc-footer {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 18px !important;
+    margin-top: 34px !important;
+  }
+
   .financeiro-doc-header,
   .financeiro-doc-title,
   .financeiro-doc-org,
@@ -308,13 +386,5 @@
   .financeiro-doc-footer {
     break-inside: avoid;
     page-break-inside: avoid;
-  }
-
-  .financeiro-doc-brand img {
-    width: 105px !important;
-  }
-
-  .financeiro-doc-title h2 {
-    font-size: 22pt !important;
   }
 }
