@@ -1,5 +1,19 @@
 import { useMemo, useState } from 'react'
-import { BarChart3, Download, Eye, FileText, Pencil, Printer, ShieldCheck, Trash2, X } from 'lucide-react'
+import {
+  BarChart3,
+  Download,
+  Eye,
+  FileJson,
+  FileText,
+  Grid2X2,
+  List,
+  Pencil,
+  Printer,
+  Search,
+  ShieldCheck,
+  Trash2,
+  X,
+} from 'lucide-react'
 import { carregarProjetos } from '../projetos/projetosData'
 import { listarBeneficiarios } from '../beneficiarios/beneficiariosStorage'
 import { listTransacoesStorage } from '../financeiro/transacoesStorage'
@@ -12,10 +26,10 @@ import { addRelatorioAudit, listRelatoriosAudit, loadRelatoriosConfig, saveRelat
 const fmt = (v) => `R$ ${Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
 
 const templatesRelatorio = [
-  { id: 'geral', nome: 'Relatório geral da ONG', modulo: 'Geral', periodo: 'Atual', formato: 'PDF / JSON', descricao: 'Resumo institucional consolidado com pessoas, projetos, beneficiários, finanças, documentos e captação.' },
-  { id: 'prestacao-projetos', nome: 'Prestação de contas por projeto', modulo: 'Projetos + Financeiro', periodo: 'Atual', formato: 'PDF / JSON', descricao: 'Receitas, despesas, comprovantes, documentos e execução vinculada aos projetos cadastrados.' },
-  { id: 'impacto-social', nome: 'Impacto social', modulo: 'Pessoas + Beneficiários', periodo: 'Atual', formato: 'PDF / JSON', descricao: 'Pessoas atendidas, comunidades, termos LGPD, horas voluntárias e ações por projeto.' },
-  { id: 'financeiro', nome: 'Financeiro consolidado', modulo: 'Financeiro', periodo: 'Atual', formato: 'PDF / JSON', descricao: 'Entradas, saídas, saldo, comprovantes pendentes e documentos financeiros.' },
+  { id: 'geral', nome: 'Relatório geral da ONG', modulo: 'Geral', periodo: 'Atual', categoria: 'Relatório executivo', formato: 'PDF / JSON', descricao: 'Resumo institucional consolidado com pessoas, projetos, beneficiários, finanças, documentos e captação.' },
+  { id: 'prestacao-projetos', nome: 'Prestação de contas por projeto', modulo: 'Projetos + Financeiro', periodo: 'Atual', categoria: 'Prestação de contas', formato: 'PDF / JSON', descricao: 'Receitas, despesas, comprovantes, documentos e execução vinculada aos projetos cadastrados.' },
+  { id: 'impacto-social', nome: 'Impacto social', modulo: 'Pessoas + Beneficiários', periodo: 'Atual', categoria: 'Impacto social', formato: 'PDF / JSON', descricao: 'Pessoas atendidas, comunidades, termos LGPD, horas voluntárias e ações por projeto.' },
+  { id: 'financeiro', nome: 'Financeiro consolidado', modulo: 'Financeiro', periodo: 'Atual', categoria: 'Financeiro', formato: 'PDF / JSON', descricao: 'Entradas, saídas, saldo, comprovantes pendentes e documentos financeiros.' },
 ]
 
 function gerarBaseDados() {
@@ -61,6 +75,7 @@ function montarResumoRelatorio(template, base, config = {}) {
     observacoes: config.observacoes || '',
     status: config.status || 'Rascunho auditável',
     atualizadoEm: config.atualizadoEm || '',
+    tamanho: `${linhas.length} indicadores`,
     linhas,
   }
 }
@@ -81,9 +96,13 @@ export default function Relatorios() {
   const [modal, setModal] = useState({ aberto: false, modo: 'visualizar', relatorio: null })
   const [audit, setAudit] = useState(() => listRelatoriosAudit())
   const [configs, setConfigs] = useState(() => loadRelatoriosConfig())
+  const [busca, setBusca] = useState('')
+  const [modoVisual, setModoVisual] = useState('lista')
+
   const base = useMemo(() => gerarBaseDados(), [modal, configs])
   const indicadores = montarIndicadores(base)
   const relatorios = templatesRelatorio.map((template) => montarResumoRelatorio(template, base, configs[template.id] || {}))
+  const filtrados = relatorios.filter((r) => [r.titulo, r.descricao, r.modulo, r.categoria, r.status].join(' ').toLowerCase().includes(busca.toLowerCase()))
 
   const registrarAuditoria = (relatorio, acao, detalhes = '') => {
     addRelatorioAudit({ relatorioId: relatorio.id, relatorioNome: relatorio.titulo || relatorio.nome, acao, detalhes })
@@ -113,7 +132,7 @@ export default function Relatorios() {
   const exportarPdf = (relatorio) => {
     registrarAuditoria(relatorio, 'exportou PDF', 'Exportação via impressão do navegador')
     setModal({ aberto: true, modo: 'pdf', relatorio })
-    setTimeout(() => window.print(), 100)
+    setTimeout(() => window.print(), 120)
   }
 
   const exportarJson = (relatorio) => {
@@ -129,12 +148,22 @@ export default function Relatorios() {
     registrarAuditoria(relatorio, 'restaurou relatório', 'Configuração editada foi removida')
   }
 
+  const ActionButtons = ({ relatorio }) => (
+    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+      <button className="btn btn-sm btn-outline" onClick={() => abrirModal(relatorio, 'visualizar')}><Eye size={13} /> Ver</button>
+      <button className="btn btn-sm btn-outline" onClick={() => abrirModal(relatorio, 'editar')}><Pencil size={13} /> Editar</button>
+      <button className="btn btn-sm btn-outline" onClick={() => exportarJson(relatorio)}><Download size={13} /> JSON</button>
+      <button className="btn btn-sm btn-primary" onClick={() => exportarPdf(relatorio)}><Printer size={13} /> PDF</button>
+      {configs[relatorio.id] && <button className="btn btn-sm btn-outline" onClick={() => limparEdicao(relatorio)}><Trash2 size={13} /> Restaurar</button>}
+    </div>
+  )
+
   return (
     <div className="mod-relatorios animate-fade-in">
       <div className="page-header no-print">
         <div>
           <h1 className="page-title">Relatórios</h1>
-          <p className="page-subtitle">Relatórios reais, editáveis e auditáveis conectados aos módulos da plataforma</p>
+          <p className="page-subtitle">Central de relatórios com visualização, edição e download no padrão da Central de Documentos</p>
         </div>
         <button className="btn btn-primary" onClick={() => exportarPdf(relatorios[0])}><Printer size={16} /> Gerar PDF geral</button>
       </div>
@@ -142,13 +171,11 @@ export default function Relatorios() {
       <section className="report-cover card" style={{ marginBottom: 24 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 20, alignItems: 'flex-start' }}>
           <div>
-            <div className="badge badge-blue" style={{ marginBottom: 12 }}>Relatórios auditáveis</div>
+            <div className="badge badge-blue" style={{ marginBottom: 12 }}>Documentos de relatório</div>
             <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 28, color: 'var(--gray-900)' }}>Painel de Gestão Social</h2>
-            <p style={{ color: 'var(--gray-500)', maxWidth: 720, marginTop: 8 }}>Os relatórios abaixo são calculados com os dados reais cadastrados nos módulos de pessoas, beneficiários, projetos, financeiro, documentos e captação.</p>
+            <p style={{ color: 'var(--gray-500)', maxWidth: 720, marginTop: 8 }}>Cada relatório funciona como um documento auditável: pode ser visualizado em modal, editado, exportado e rastreado.</p>
           </div>
-          <div style={{ textAlign: 'right', color: 'var(--gray-400)', fontSize: 13 }}>
-            <strong style={{ color: 'var(--gray-700)' }}>Gerado em</strong><br />{new Date().toLocaleDateString('pt-BR')}
-          </div>
+          <div style={{ textAlign: 'right', color: 'var(--gray-400)', fontSize: 13 }}><strong style={{ color: 'var(--gray-700)' }}>Gerado em</strong><br />{new Date().toLocaleDateString('pt-BR')}</div>
         </div>
       </section>
 
@@ -161,112 +188,87 @@ export default function Relatorios() {
         ))}
       </div>
 
-      <div className="card" style={{ marginBottom: 24 }}>
-        <div className="table-wrap">
-          <table>
-            <thead><tr><th>Relatório</th><th>Módulos conectados</th><th>Descrição</th><th>Período</th><th>Status</th><th className="no-print">Ações</th></tr></thead>
-            <tbody>
-              {relatorios.map((relatorio) => (
-                <tr key={relatorio.id}>
-                  <td><strong>{relatorio.titulo}</strong></td>
-                  <td>{relatorio.modulo}</td>
-                  <td>{relatorio.descricao}</td>
-                  <td>{relatorio.periodo}</td>
-                  <td><span className={`badge ${relatorio.status === 'Editado' ? 'badge-blue' : 'badge-yellow'}`}>{relatorio.status}</span></td>
-                  <td className="no-print">
-                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                      <button className="btn btn-sm btn-outline" onClick={() => abrirModal(relatorio, 'visualizar')}><Eye size={13} /> Visualizar</button>
-                      <button className="btn btn-sm btn-outline" onClick={() => abrirModal(relatorio, 'editar')}><Pencil size={13} /> Editar</button>
-                      <button className="btn btn-sm btn-outline" onClick={() => exportarJson(relatorio)}><Download size={13} /> JSON</button>
-                      <button className="btn btn-sm btn-primary" onClick={() => exportarPdf(relatorio)}><Printer size={13} /> PDF</button>
-                      {configs[relatorio.id] && <button className="btn btn-sm btn-outline" onClick={() => limparEdicao(relatorio)}><Trash2 size={13} /> Restaurar</button>}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      <div className="card no-print" style={{ marginBottom: 20 }}>
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+          <div style={{ position: 'relative', flex: 1, minWidth: 260 }}>
+            <Search size={15} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--gray-400)' }} />
+            <input placeholder="Buscar relatório por nome, módulo, categoria ou status…" value={busca} onChange={(e) => setBusca(e.target.value)} style={{ paddingLeft: 38 }} />
+          </div>
+          <button className={`btn btn-sm ${modoVisual === 'lista' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setModoVisual('lista')}><List size={14} /> Lista</button>
+          <button className={`btn btn-sm ${modoVisual === 'grade' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setModoVisual('grade')}><Grid2X2 size={14} /> Grade</button>
         </div>
       </div>
+
+      {modoVisual === 'grade' ? (
+        <div className="grid-3" style={{ marginBottom: 24 }}>
+          {filtrados.map((relatorio) => (
+            <div key={relatorio.id} className="card" style={{ display: 'grid', gap: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}><div className="stat-icon"><FileText size={18} /></div><div><strong>{relatorio.titulo}</strong><div style={{ fontSize: 12, color: 'var(--gray-400)' }}>{relatorio.categoria} • {relatorio.formato}</div></div></div>
+              <p style={{ color: 'var(--gray-500)', fontSize: 13 }}>{relatorio.descricao}</p>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}><span className="badge badge-gray">{relatorio.modulo}</span><span className={`badge ${relatorio.status === 'Editado' ? 'badge-blue' : 'badge-yellow'}`}>{relatorio.status}</span></div>
+              <ActionButtons relatorio={relatorio} />
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="card" style={{ marginBottom: 24 }}>
+          <div className="table-wrap">
+            <table>
+              <thead><tr><th>Documento</th><th>Categoria</th><th>Módulos conectados</th><th>Período</th><th>Status</th><th>Tamanho</th><th className="no-print">Ações</th></tr></thead>
+              <tbody>
+                {filtrados.map((relatorio) => (
+                  <tr key={relatorio.id}>
+                    <td><strong style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}><FileText size={15} /> {relatorio.titulo}</strong><div style={{ fontSize: 12, color: 'var(--gray-400)' }}>{relatorio.descricao}</div></td>
+                    <td><span className="badge badge-gray">{relatorio.categoria}</span></td>
+                    <td>{relatorio.modulo}</td>
+                    <td>{relatorio.periodo}</td>
+                    <td><span className={`badge ${relatorio.status === 'Editado' ? 'badge-blue' : 'badge-yellow'}`}>{relatorio.status}</span></td>
+                    <td>{relatorio.tamanho}</td>
+                    <td className="no-print"><ActionButtons relatorio={relatorio} /></td>
+                  </tr>
+                ))}
+                {filtrados.length === 0 && <tr><td colSpan="7" style={{ textAlign: 'center', color: 'var(--gray-400)' }}>Nenhum relatório encontrado.</td></tr>}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       <div className="card no-print">
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}><ShieldCheck size={18} /><strong>Auditoria dos relatórios</strong></div>
-        <div className="table-wrap">
-          <table>
-            <thead><tr><th>Relatório</th><th>Ação</th><th>Usuário</th><th>Data</th><th>Detalhes</th></tr></thead>
-            <tbody>
-              {audit.slice(0, 10).map((item) => <tr key={item.id}><td>{item.relatorioNome}</td><td>{item.acao}</td><td>{item.usuario}</td><td>{new Date(item.criadoEm).toLocaleString('pt-BR')}</td><td>{item.detalhes || '-'}</td></tr>)}
-              {audit.length === 0 && <tr><td colSpan="5" style={{ textAlign: 'center', color: 'var(--gray-400)' }}>Nenhuma ação auditada ainda.</td></tr>}
-            </tbody>
-          </table>
-        </div>
+        <div className="table-wrap"><table><thead><tr><th>Relatório</th><th>Ação</th><th>Usuário</th><th>Data</th><th>Detalhes</th></tr></thead><tbody>{audit.slice(0, 10).map((item) => <tr key={item.id}><td>{item.relatorioNome}</td><td>{item.acao}</td><td>{item.usuario}</td><td>{new Date(item.criadoEm).toLocaleString('pt-BR')}</td><td>{item.detalhes || '-'}</td></tr>)}{audit.length === 0 && <tr><td colSpan="5" style={{ textAlign: 'center', color: 'var(--gray-400)' }}>Nenhuma ação auditada ainda.</td></tr>}</tbody></table></div>
       </div>
 
-      {modal.aberto && <RelatorioModal modal={modal} setModal={setModal} base={base} onClose={fecharModal} onSave={salvarRelatorio} />}
+      {modal.aberto && <RelatorioModal modal={modal} setModal={setModal} base={base} onClose={fecharModal} onSave={salvarRelatorio} onExportPdf={exportarPdf} onExportJson={exportarJson} />}
     </div>
   )
 }
 
-function RelatorioModal({ modal, setModal, base, onClose, onSave }) {
+function RelatorioModal({ modal, setModal, base, onClose, onSave, onExportPdf, onExportJson }) {
   const relatorio = modal.relatorio
   const editavel = modal.modo === 'editar'
   if (!relatorio) return null
-
   const atualizar = (campo, valor) => setModal((atual) => ({ ...atual, relatorio: { ...atual.relatorio, [campo]: valor } }))
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.55)', zIndex: 50, display: 'grid', placeItems: 'center', padding: 24 }}>
-      <div className="card report-print-area" style={{ width: 'min(980px, 100%)', maxHeight: '92vh', overflowY: 'auto', display: 'grid', gap: 16 }}>
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.62)', zIndex: 50, display: 'grid', placeItems: 'center', padding: 24 }}>
+      <div className="card report-print-area" style={{ width: 'min(1380px, calc(100vw - 48px))', maxHeight: 'calc(100vh - 48px)', overflowY: 'auto', display: 'grid', gridTemplateRows: 'auto 1fr', gap: 16, resize: 'both' }}>
         <div className="no-print" style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start' }}>
-          <div>
-            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 23 }}>{editavel ? 'Editar relatório' : 'Visualizar relatório'}</h2>
-            <p style={{ color: 'var(--gray-400)', fontSize: 13, marginTop: 4 }}>Visualização em modal, sem bloco inline duplicado na página principal.</p>
-          </div>
+          <div><h2 style={{ fontFamily: 'var(--font-display)', fontSize: 23 }}>{editavel ? 'Editar documento de relatório' : 'Visualizar documento de relatório'}</h2><p style={{ color: 'var(--gray-400)', fontSize: 13, marginTop: 4 }}>Experiência semelhante à Central de Documentos: painel de leitura, metadados, edição e downloads.</p></div>
           <button className="btn btn-ghost btn-icon" onClick={onClose}><X size={18} /></button>
         </div>
-
-        {editavel ? (
-          <div style={{ display: 'grid', gap: 10 }}>
-            <input value={relatorio.titulo} onChange={(e) => atualizar('titulo', e.target.value)} placeholder="Título do relatório" />
-            <textarea rows={3} value={relatorio.descricao} onChange={(e) => atualizar('descricao', e.target.value)} placeholder="Descrição" />
-            <textarea rows={4} value={relatorio.observacoes || ''} onChange={(e) => atualizar('observacoes', e.target.value)} placeholder="Observações de análise, ressalvas ou parecer técnico" />
-          </div>
-        ) : null}
-
-        <div className="report-cover" style={{ border: '1px solid var(--gray-100)', borderRadius: 12, padding: 18 }}>
-          <div className="badge badge-blue" style={{ marginBottom: 10 }}>{relatorio.modulo}</div>
-          <h1 style={{ fontFamily: 'var(--font-display)', color: 'var(--gray-900)', marginBottom: 8 }}>{relatorio.titulo}</h1>
-          <p style={{ color: 'var(--gray-500)' }}>{relatorio.descricao}</p>
-          {relatorio.observacoes && <div style={{ marginTop: 12, padding: 12, borderRadius: 10, background: 'var(--gray-50)', color: 'var(--gray-700)' }}><strong>Observações:</strong><br />{relatorio.observacoes}</div>}
-        </div>
-
-        <div className="grid-4">
-          <MiniStat label="Pessoas" value={base.pessoas.length} />
-          <MiniStat label="Beneficiários" value={base.beneficiarios.length} />
-          <MiniStat label="Projetos" value={base.projetos.length} />
-          <MiniStat label="Saldo" value={fmt(base.saldo)} />
-        </div>
-
-        <div>
-          <h3 style={{ marginBottom: 10 }}>Indicadores do relatório</h3>
-          <div className="table-wrap"><table><thead><tr><th>Indicador</th><th>Valor</th></tr></thead><tbody>{relatorio.linhas.map(([label, value]) => <tr key={label}><td>{label}</td><td><strong>{value}</strong></td></tr>)}</tbody></table></div>
-        </div>
-
-        <div>
-          <h3 style={{ marginBottom: 10 }}>Comunicação com módulos</h3>
-          <div style={{ display: 'grid', gap: 8 }}>
-            <ModuleLine nome="Pessoas" total={base.pessoas.length} />
-            <ModuleLine nome="Beneficiários" total={base.beneficiarios.length} />
-            <ModuleLine nome="Projetos" total={base.projetos.length} />
-            <ModuleLine nome="Financeiro" total={base.transacoes.length} detalhe={`${fmt(base.receitas)} em receitas / ${fmt(base.despesas)} em despesas`} />
-            <ModuleLine nome="Documentos" total={base.documentos.length} />
-            <ModuleLine nome="Captação" total={base.oportunidades.length} />
-          </div>
-        </div>
-
-        <div className="no-print" style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-          <button className="btn btn-outline" onClick={onClose}>Fechar</button>
-          {editavel && <button className="btn btn-primary" onClick={onSave}>Salvar edição</button>}
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 360px', gap: 18, minHeight: 0 }}>
+          <main style={{ border: '1px solid var(--gray-100)', borderRadius: 12, padding: 20, background: '#fff', overflow: 'auto' }}>
+            {editavel && <div className="no-print" style={{ display: 'grid', gap: 10, marginBottom: 16 }}><input value={relatorio.titulo} onChange={(e) => atualizar('titulo', e.target.value)} placeholder="Título do relatório" /><textarea rows={3} value={relatorio.descricao} onChange={(e) => atualizar('descricao', e.target.value)} placeholder="Descrição" /><textarea rows={4} value={relatorio.observacoes || ''} onChange={(e) => atualizar('observacoes', e.target.value)} placeholder="Observações de análise, ressalvas ou parecer técnico" /></div>}
+            <div className="report-cover" style={{ border: '1px solid var(--gray-100)', borderRadius: 12, padding: 18, marginBottom: 16 }}><div className="badge badge-blue" style={{ marginBottom: 10 }}>{relatorio.modulo}</div><h1 style={{ fontFamily: 'var(--font-display)', color: 'var(--gray-900)', marginBottom: 8 }}>{relatorio.titulo}</h1><p style={{ color: 'var(--gray-500)' }}>{relatorio.descricao}</p>{relatorio.observacoes && <div style={{ marginTop: 12, padding: 12, borderRadius: 10, background: 'var(--gray-50)', color: 'var(--gray-700)' }}><strong>Observações:</strong><br />{relatorio.observacoes}</div>}</div>
+            <div className="grid-4" style={{ marginBottom: 16 }}><MiniStat label="Pessoas" value={base.pessoas.length} /><MiniStat label="Beneficiários" value={base.beneficiarios.length} /><MiniStat label="Projetos" value={base.projetos.length} /><MiniStat label="Saldo" value={fmt(base.saldo)} /></div>
+            <h3 style={{ marginBottom: 10 }}>Indicadores do relatório</h3><div className="table-wrap" style={{ marginBottom: 18 }}><table><thead><tr><th>Indicador</th><th>Valor</th></tr></thead><tbody>{relatorio.linhas.map(([label, value]) => <tr key={label}><td>{label}</td><td><strong>{value}</strong></td></tr>)}</tbody></table></div>
+            <h3 style={{ marginBottom: 10 }}>Comunicação com módulos</h3><div style={{ display: 'grid', gap: 8 }}><ModuleLine nome="Pessoas" total={base.pessoas.length} /><ModuleLine nome="Beneficiários" total={base.beneficiarios.length} /><ModuleLine nome="Projetos" total={base.projetos.length} /><ModuleLine nome="Financeiro" total={base.transacoes.length} detalhe={`${fmt(base.receitas)} em receitas / ${fmt(base.despesas)} em despesas`} /><ModuleLine nome="Documentos" total={base.documentos.length} /><ModuleLine nome="Captação" total={base.oportunidades.length} /></div>
+          </main>
+          <aside className="no-print" style={{ display: 'grid', gap: 10, alignContent: 'start', border: '1px solid var(--gray-100)', borderRadius: 12, padding: 16, background: 'var(--gray-50)' }}>
+            <div className="stat-icon"><FileText size={20} /></div><h3 style={{ lineHeight: 1.35 }}>{relatorio.titulo}</h3><span className={`badge ${relatorio.status === 'Editado' ? 'badge-blue' : 'badge-yellow'}`} style={{ width: 'fit-content' }}>{relatorio.status}</span><div style={{ fontSize: 13, color: 'var(--gray-500)' }}>Categoria: <strong>{relatorio.categoria}</strong></div><div style={{ fontSize: 13, color: 'var(--gray-500)' }}>Módulo: <strong>{relatorio.modulo}</strong></div><div style={{ fontSize: 13, color: 'var(--gray-500)' }}>Período: <strong>{relatorio.periodo}</strong></div><div style={{ fontSize: 13, color: 'var(--gray-500)' }}>Formato: <strong>{relatorio.formato}</strong></div>
+            <button className="btn btn-outline" onClick={() => setModal((atual) => ({ ...atual, modo: 'editar' }))}><Pencil size={14} /> Editar</button>{editavel && <button className="btn btn-primary" onClick={onSave}>Salvar alterações</button>}<button className="btn btn-outline" onClick={() => onExportPdf(relatorio)}><Printer size={14} /> Baixar PDF</button><button className="btn btn-outline" onClick={() => onExportJson(relatorio)}><FileJson size={14} /> Baixar JSON</button><button className="btn btn-outline" onClick={onClose}>Fechar</button>
+          </aside>
         </div>
       </div>
     </div>
