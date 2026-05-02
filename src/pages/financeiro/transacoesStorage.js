@@ -47,6 +47,7 @@ export function addTransacaoStorage(transacao) {
       tipo: nextItem.tipo === 'RECEITA' ? 'Comprovante de receita' : 'Comprovante de despesa',
       lancamento: nextItem.descricao || 'Transação sem descrição',
       categoria: nextItem.categoria || '-',
+      naturezaRecurso: nextItem.naturezaRecurso || '',
       origemEntidade: nextItem.origemEntidade || nextItem.nomeDoador || nextItem.nomeEntidade || '',
       nomeDoador: nextItem.nomeDoador || '',
       nomeEntidade: nextItem.nomeEntidade || nextItem.origemEntidade || '',
