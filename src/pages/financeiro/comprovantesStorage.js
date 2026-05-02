@@ -64,6 +64,12 @@ function salvarArray(items) {
   return items
 }
 
+function recarregarFinanceiroAposValidacao() {
+  if (typeof window === 'undefined') return
+  if (!window.location.pathname.startsWith('/financeiro')) return
+  setTimeout(() => window.location.reload(), 120)
+}
+
 function sincronizarRemocaoTransacoes(transacaoId) {
   if (typeof window === 'undefined' || !transacaoId) return false
   try {
@@ -77,7 +83,7 @@ function sincronizarRemocaoTransacoes(transacaoId) {
 }
 
 function sincronizarValidacaoFinanceira(comprovante) {
-  if (typeof window === 'undefined' || comprovante?.status !== 'VALIDO') return
+  if (typeof window === 'undefined' || comprovante?.status !== 'VALIDO') return false
 
   const dadosValidacao = {
     comprovante: 'VALIDO',
@@ -88,17 +94,23 @@ function sincronizarValidacaoFinanceira(comprovante) {
     hashDocumento: comprovante.hashDocumento,
   }
 
+  let sincronizou = false
+
   if (comprovante.transacaoId) {
     const transacoes = lerArrayKey(TRANSACOES_KEY)
     const next = transacoes.map((item) => String(item.id) === String(comprovante.transacaoId) ? { ...item, ...dadosValidacao } : item)
     salvarArrayKey(TRANSACOES_KEY, next)
+    sincronizou = JSON.stringify(transacoes) !== JSON.stringify(next)
   }
 
   if (comprovante.orcamentoId) {
     const orcamentos = lerArrayKey(ORCAMENTOS_KEY)
     const next = orcamentos.map((item) => String(item.id) === String(comprovante.orcamentoId) ? { ...item, ...dadosValidacao, status: item.status || 'APROVADA' } : item)
     salvarArrayKey(ORCAMENTOS_KEY, next)
+    sincronizou = sincronizou || JSON.stringify(orcamentos) !== JSON.stringify(next)
   }
+
+  return sincronizou
 }
 
 function normalizarValidacao(comprovante) {
@@ -142,8 +154,13 @@ export function listComprovantesStorage() {
 
 export function saveComprovantesStorage(comprovantes) {
   const next = comprovantes.map(normalizarValidacao)
-  next.forEach(sincronizarValidacaoFinanceira)
-  return salvarArray(next)
+  let sincronizou = false
+  next.forEach((item) => {
+    sincronizou = sincronizarValidacaoFinanceira(item) || sincronizou
+  })
+  const saved = salvarArray(next)
+  if (sincronizou) recarregarFinanceiroAposValidacao()
+  return saved
 }
 
 export function addComprovanteStorage(comprovante) {
@@ -155,7 +172,8 @@ export function addComprovanteStorage(comprovante) {
   })
 
   salvarArray([nextItem, ...current.filter((item) => String(item.id) !== String(nextItem.id))])
-  sincronizarValidacaoFinanceira(nextItem)
+  const sincronizou = sincronizarValidacaoFinanceira(nextItem)
+  if (sincronizou) recarregarFinanceiroAposValidacao()
   return nextItem
 }
 
@@ -164,7 +182,8 @@ export function updateComprovanteStorage(comprovante) {
   const nextItem = normalizarValidacao(comprovante)
   const next = current.map((item) => String(item.id) === String(nextItem.id) ? nextItem : item)
   salvarArray(next)
-  sincronizarValidacaoFinanceira(nextItem)
+  const sincronizou = sincronizarValidacaoFinanceira(nextItem)
+  if (sincronizou) recarregarFinanceiroAposValidacao()
   return nextItem
 }
 
