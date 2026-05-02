@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, Check, CreditCard, FileSpreadsheet, Plus, ReceiptText, Save, Trash2, TrendingDown, TrendingUp, Upload, X } from 'lucide-react'
+import { ArrowLeft, Check, CreditCard, FileSpreadsheet, Plus, ReceiptText, Save, TrendingDown, TrendingUp, Upload, X } from 'lucide-react'
 import { addTransacaoStorage } from './transacoesStorage'
 import { addOrcamentoStorage } from './financeiroStorage'
 
 const TAGS_KEY = 'ong_financeiro_conta_tags'
 const TAGS_PADRAO = ['PIX', 'Conta Corrente', 'Boleto', 'Cartão']
+const CATEGORIAS_RECEITA = ['Doações', 'Repasses', 'Convênio']
 
 function carregarTagsFinanceiras() {
   if (typeof window === 'undefined') return TAGS_PADRAO
@@ -89,8 +90,8 @@ function statusPorTipo(tipo) {
 
 function categoriaPadrao(tipo) {
   if (tipo === 'RECEITA') return 'Doações'
-  if (tipo === 'DESPESA') return 'Serviços'
-  return 'Orçamento geral'
+  if (tipo === 'DESPESA') return 'Doações'
+  return 'Doações'
 }
 
 function statusPadrao(tipo, status) {
@@ -100,6 +101,18 @@ function statusPadrao(tipo, status) {
   return 'PREVISTA'
 }
 
+function rotuloOrigem(tipo) {
+  if (tipo === 'RECEITA') return 'Nome do doador ou entidade'
+  if (tipo === 'DESPESA') return 'Nome do fornecedor ou entidade'
+  return 'Nome da entidade ou fonte do orçamento'
+}
+
+function placeholderOrigem(tipo) {
+  if (tipo === 'RECEITA') return 'Ex.: João da Silva, Empresa XYZ, Prefeitura Municipal...'
+  if (tipo === 'DESPESA') return 'Ex.: Papelaria Central, fornecedor, prestador de serviço...'
+  return 'Ex.: Secretaria, empresa parceira, convênio, edital...'
+}
+
 export default function NovaTransacaoPage() {
   const navigate = useNavigate()
   const [form, setForm] = useState({
@@ -107,6 +120,7 @@ export default function NovaTransacaoPage() {
     descricao: '',
     valor: '',
     categoria: 'Doações',
+    origemEntidade: '',
     projeto: 'Fundo Geral',
     conta: 'PIX',
     status: '',
@@ -131,7 +145,7 @@ export default function NovaTransacaoPage() {
       ...atual,
       tipo,
       status: '',
-      categoria: atual.categoria && atual.categoria !== categoriaPadrao(atual.tipo) ? atual.categoria : categoriaPadrao(tipo),
+      categoria: CATEGORIAS_RECEITA.includes(atual.categoria) ? atual.categoria : categoriaPadrao(tipo),
     }))
   }
 
@@ -187,12 +201,15 @@ export default function NovaTransacaoPage() {
     const categoria = form.categoria || categoriaPadrao(tipo)
     const projeto = form.projeto || 'Fundo Geral'
     const conta = form.conta || tags[0] || 'PIX'
+    const origemEntidade = form.origemEntidade.trim()
 
     if (tipo === 'ORCAMENTO') {
       addOrcamentoStorage({
         projeto,
         categoria,
         descricao,
+        origemEntidade,
+        nomeEntidade: origemEntidade,
         previsto: valor,
         aprovado: status === 'APROVADA' ? valor : 0,
         realizado: 0,
@@ -210,6 +227,9 @@ export default function NovaTransacaoPage() {
       tipo,
       descricao,
       categoria,
+      origemEntidade,
+      nomeDoador: tipo === 'RECEITA' ? origemEntidade : '',
+      nomeEntidade: origemEntidade,
       valor,
       status,
       data: dataHoje,
@@ -283,11 +303,20 @@ export default function NovaTransacaoPage() {
           </label>
         </div>
 
-        <div className="grid-3">
+        <div className="grid-2">
           <label style={{ display: 'grid', gap: 6 }}>
             <span style={{ fontSize: 13, fontWeight: 600 }}>Categoria</span>
-            <input value={form.categoria} onChange={(e) => atualizarCampo('categoria', e.target.value)} placeholder="Doações, alimentação, serviços..." />
+            <select value={form.categoria} onChange={(e) => atualizarCampo('categoria', e.target.value)}>
+              {CATEGORIAS_RECEITA.map((categoria) => <option key={categoria} value={categoria}>{categoria}</option>)}
+            </select>
           </label>
+          <label style={{ display: 'grid', gap: 6 }}>
+            <span style={{ fontSize: 13, fontWeight: 600 }}>{rotuloOrigem(form.tipo)}</span>
+            <input value={form.origemEntidade} onChange={(e) => atualizarCampo('origemEntidade', e.target.value)} placeholder={placeholderOrigem(form.tipo)} />
+          </label>
+        </div>
+
+        <div className="grid-2">
           <label style={{ display: 'grid', gap: 6 }}>
             <span style={{ fontSize: 13, fontWeight: 600 }}>Projeto</span>
             <input value={form.projeto} onChange={(e) => atualizarCampo('projeto', e.target.value)} placeholder="Fundo Geral" />
