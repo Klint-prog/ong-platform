@@ -6,4 +6,16 @@ const SVG_LOGO = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 300">
   <text x="320" y="258" text-anchor="middle" font-family="Arial, sans-serif" font-size="28" font-weight="700" fill="#4b5563">Caridade que motiva</text>
 </svg>`
 
-export const AV_VADAI_LOGO_DATA_URL = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(SVG_LOGO)}`
+const DEFAULT_LOGO = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(SVG_LOGO)}`
+
+function carregarLogoInstitucional() {
+  if (typeof window === 'undefined') return DEFAULT_LOGO
+  try {
+    const dados = JSON.parse(window.localStorage.getItem('ong:institucional') || '{}')
+    return dados.logoUrl || DEFAULT_LOGO
+  } catch {
+    return DEFAULT_LOGO
+  }
+}
+
+export const AV_VADAI_LOGO_DATA_URL = carregarLogoInstitucional()
