@@ -1,14 +1,6 @@
-const SVG_LOGO = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 300">
-  <rect width="640" height="300" fill="white"/>
-  <text x="320" y="112" text-anchor="middle" font-family="Georgia, serif" font-size="92" font-style="italic" fill="#374151">AV</text>
-  <line x1="40" y1="154" x2="600" y2="154" stroke="#111827" stroke-width="5"/>
-  <text x="320" y="215" text-anchor="middle" font-family="Arial, sans-serif" font-size="44" font-weight="700" fill="#4b5563">AV Associação Vadai</text>
-  <text x="320" y="258" text-anchor="middle" font-family="Arial, sans-serif" font-size="28" font-weight="700" fill="#4b5563">Caridade que motiva</text>
-</svg>`
+const DEFAULT_LOGO = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NDAgMzAwIj4KICA8cmVjdCB3aWR0aD0iNjQwIiBoZWlnaHQ9IjMwMCIgZmlsbD0id2hpdGUiLz4KICA8dGV4dCB4PSIzMjAiIHk9IjExMiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1mYW1pbHk9Ikdlb3JnaWEsIHNlcmlmIiBmb250LXNpemU9IjkyIiBmb250LXN0eWxlPSJpdGFsaWMiIGZpbGw9IiMzNzQxNTEiPkFWPC90ZXh0PgogIDxsaW5lIHgxPSI0MCIgeTE9IjE1NCIgeDI9IjYwMCIgeTI9IjE1NCIgc3Ryb2tlPSIjMTExODI3IiBzdHJva2Utd2lkdGg9IjUiLz4KICA8dGV4dCB4PSIzMjAiIHk9IjIxNSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjQ0IiBmb250LXdlaWdodD0iNzAwIiBmaWxsPSIjNGI1NTYzIj5BViBBc3NvY2lhw6fDo28gVmFkYWk8L3RleHQ+CiAgPHRleHQgeD0iMzIwIiB5PSIyNTgiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIyOCIgZm9udC13ZWlnaHQ9IjcwMCIgZmlsbD0iIzRiNTU2MyI+Q2FyaWRhZGUgcXVlIG1vdGl2YTwvdGV4dD4KPC9zdmc+'
 
-const DEFAULT_LOGO = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(SVG_LOGO)}`
-
-function carregarLogoInstitucional() {
+export function getLogoInstitucional() {
   if (typeof window === 'undefined') return DEFAULT_LOGO
   try {
     const dados = JSON.parse(window.localStorage.getItem('ong:institucional') || '{}')
@@ -18,4 +10,4 @@ function carregarLogoInstitucional() {
   }
 }
 
-export const AV_VADAI_LOGO_DATA_URL = carregarLogoInstitucional()
+export const AV_VADAI_LOGO_DATA_URL = DEFAULT_LOGO
