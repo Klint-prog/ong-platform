@@ -1,6 +1,15 @@
-import { ArrowLeft, Save } from 'lucide-react'
+import { ArrowLeft, Save, Upload } from 'lucide-react'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+
+function arquivoParaDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result)
+    reader.onerror = reject
+    reader.readAsDataURL(file)
+  })
+}
 
 export default function CadastroEntity({ titulo, subtitulo, campos, cor = 'var(--blue-500)', initialValues = {}, onSave }) {
   const navigate = useNavigate()
@@ -13,6 +22,8 @@ export default function CadastroEntity({ titulo, subtitulo, campos, cor = 'var(-
     }
     navigate(-1)
   }
+
+  const atualizarCampo = (name, value) => setForm(prev => ({ ...prev, [name]: value }))
 
   return (
     <div className="animate-fade-in">
@@ -32,16 +43,22 @@ export default function CadastroEntity({ titulo, subtitulo, campos, cor = 'var(-
             <label key={campo.name} style={{ display: 'grid', gap: 6 }}>
               <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--gray-700)' }}>{campo.label}</span>
               {campo.type === 'textarea' ? (
-                <textarea rows={4} placeholder={campo.placeholder} value={form[campo.name] || ''} onChange={e => setForm(prev => ({ ...prev, [campo.name]: e.target.value }))} />
+                <textarea rows={4} placeholder={campo.placeholder} value={form[campo.name] || ''} onChange={e => atualizarCampo(campo.name, e.target.value)} />
+              ) : campo.type === 'image' ? (
+                <ImageField
+                  value={form[campo.name] || ''}
+                  placeholder={campo.placeholder}
+                  onChange={(next) => atualizarCampo(campo.name, next)}
+                />
               ) : campo.type === 'tag-selector' ? (
                 <TagSelectorField
                   fieldName={campo.name}
                   value={form[campo.name]}
                   options={campo.options || []}
-                  onChange={(next) => setForm(prev => ({ ...prev, [campo.name]: next }))}
+                  onChange={(next) => atualizarCampo(campo.name, next)}
                 />
               ) : (
-                <input type={campo.type || 'text'} placeholder={campo.placeholder} value={form[campo.name] || ''} onChange={e => setForm(prev => ({ ...prev, [campo.name]: e.target.value }))} />
+                <input type={campo.type || 'text'} placeholder={campo.placeholder} value={form[campo.name] || ''} onChange={e => atualizarCampo(campo.name, e.target.value)} />
               )}
             </label>
           ))}
@@ -53,6 +70,43 @@ export default function CadastroEntity({ titulo, subtitulo, campos, cor = 'var(-
           </button>
         </div>
       </div>
+    </div>
+  )
+}
+
+function ImageField({ value, placeholder, onChange }) {
+  const [processing, setProcessing] = useState(false)
+
+  const handleFile = async (event) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+    setProcessing(true)
+    try {
+      const dataUrl = await arquivoParaDataUrl(file)
+      onChange(dataUrl)
+    } finally {
+      setProcessing(false)
+      event.target.value = ''
+    }
+  }
+
+  return (
+    <div style={{ display: 'grid', gap: 10 }}>
+      {value ? (
+        <div style={{ border: '1px solid var(--gray-200)', borderRadius: 12, padding: 12, background: '#fff', display: 'grid', gap: 10 }}>
+          <img src={value} alt="Pré-visualização do logo" style={{ maxWidth: 260, maxHeight: 140, objectFit: 'contain' }} />
+          <button type="button" className="btn btn-sm btn-outline" onClick={() => onChange('')}>Remover logo</button>
+        </div>
+      ) : (
+        <div style={{ border: '1px dashed var(--gray-300)', borderRadius: 12, padding: 14, color: 'var(--gray-500)', fontSize: 13 }}>
+          Nenhum logo enviado. {placeholder || 'Envie uma imagem PNG, JPG ou SVG.'}
+        </div>
+      )}
+      <label className="btn btn-outline" style={{ width: 'fit-content', cursor: 'pointer' }}>
+        <Upload size={15} /> {processing ? 'Processando...' : 'Enviar logo'}
+        <input type="file" accept="image/*" onChange={handleFile} style={{ display: 'none' }} />
+      </label>
+      <input value={value?.startsWith?.('data:') ? '' : value} placeholder="Ou cole uma URL pública do logo" onChange={(e) => onChange(e.target.value)} />
     </div>
   )
 }
