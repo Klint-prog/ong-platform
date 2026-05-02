@@ -22,6 +22,15 @@ const pool = new Pool({ connectionString: DATABASE_URL })
 
 async function initDb() {
   await pool.query(`
+    CREATE TABLE IF NOT EXISTS app_storage (
+      chave TEXT PRIMARY KEY,
+      valor TEXT NOT NULL DEFAULT '',
+      criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      atualizado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `)
+
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS documentos_institucionais (
       id TEXT PRIMARY KEY,
       nome TEXT NOT NULL,
@@ -98,10 +107,63 @@ const upload = multer({
 
 const app = express()
 app.use(cors())
-app.use(express.json({ limit: '1mb' }))
+app.use(express.json({ limit: '10mb' }))
 
 app.get('/api/health', (_req, res) => {
   res.json({ ok: true, service: 'ong-platform-backend' })
+})
+
+app.get('/api/storage', async (_req, res, next) => {
+  try {
+    const { rows } = await pool.query('SELECT chave, valor FROM app_storage ORDER BY chave ASC')
+    res.json(Object.fromEntries(rows.map((row) => [row.chave, row.valor])))
+  } catch (error) {
+    next(error)
+  }
+})
+
+app.get('/api/storage/:key', async (req, res, next) => {
+  try {
+    const { rows } = await pool.query('SELECT valor FROM app_storage WHERE chave = $1', [req.params.key])
+    if (!rows.length) return res.status(404).json({ error: 'Chave não encontrada.' })
+    res.json({ key: req.params.key, value: rows[0].valor })
+  } catch (error) {
+    next(error)
+  }
+})
+
+app.put('/api/storage/:key', async (req, res, next) => {
+  try {
+    const value = typeof req.body?.value === 'string' ? req.body.value : String(req.body?.value ?? '')
+    const { rows } = await pool.query(
+      `INSERT INTO app_storage (chave, valor, atualizado_em)
+       VALUES ($1, $2, NOW())
+       ON CONFLICT (chave) DO UPDATE SET valor = EXCLUDED.valor, atualizado_em = NOW()
+       RETURNING chave, valor, atualizado_em`,
+      [req.params.key, value],
+    )
+    res.json({ key: rows[0].chave, value: rows[0].valor, updatedAt: rows[0].atualizado_em })
+  } catch (error) {
+    next(error)
+  }
+})
+
+app.delete('/api/storage/:key', async (req, res, next) => {
+  try {
+    await pool.query('DELETE FROM app_storage WHERE chave = $1', [req.params.key])
+    res.json({ ok: true })
+  } catch (error) {
+    next(error)
+  }
+})
+
+app.delete('/api/storage', async (_req, res, next) => {
+  try {
+    await pool.query('DELETE FROM app_storage')
+    res.json({ ok: true })
+  } catch (error) {
+    next(error)
+  }
 })
 
 app.get('/api/institucional/documentos', async (_req, res, next) => {
