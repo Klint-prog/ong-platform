@@ -1,6 +1,9 @@
 const CONTAS_KEY = 'ong_financeiro_contas'
 const ORCAMENTOS_KEY = 'ong_financeiro_orcamentos'
 const TRANSACOES_KEY = 'ong_financeiro_transacoes'
+const CONTA_TAGS_KEY = 'ong_financeiro_conta_tags'
+
+const TAGS_PADRAO = ['PIX', 'Conta Corrente', 'Boleto', 'Cartão']
 
 function gerarId(prefixo = 'item') {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -30,6 +33,10 @@ function normalizarTexto(value) {
   return String(value || '').trim().toLowerCase()
 }
 
+function tituloConta(value) {
+  return String(value || '').trim()
+}
+
 function transacaoValidada(transacao) {
   return transacao.comprovante === 'VALIDO' || transacao.comprovanteStatus === 'VALIDO' || Boolean(transacao.validadoEm)
 }
@@ -48,9 +55,19 @@ function transacaoMovimentaSaldo(transacao) {
   return false
 }
 
+function tipoDaConta(nome) {
+  const n = normalizarTexto(nome)
+  if (n.includes('pix')) return 'PIX'
+  if (n.includes('boleto')) return 'Boleto'
+  if (n.includes('cart')) return 'Cartão'
+  if (n.includes('corrente') || n.includes('banco')) return 'Conta Corrente'
+  if (n.includes('caixa')) return 'Caixa'
+  return 'Meio financeiro'
+}
+
 function calcularResumoConta(conta, transacoes = []) {
   const contaNome = normalizarTexto(conta.nome)
-  const vinculadas = transacoes.filter((transacao) => normalizarTexto(transacao.conta) === contaNome)
+  const vinculadas = transacoes.filter((transacao) => normalizarTexto(transacao.conta || transacao.forma) === contaNome)
   const movimentadas = vinculadas.filter(transacaoMovimentaSaldo)
 
   const entradas = movimentadas
@@ -61,6 +78,7 @@ function calcularResumoConta(conta, transacoes = []) {
     .filter((transacao) => transacao.tipo === 'DESPESA')
     .reduce((total, transacao) => total + Number(transacao.valor || 0), 0)
 
+  const pendentes = vinculadas.filter((transacao) => !transacaoMovimentaSaldo(transacao))
   const saldoInicial = Number(conta.saldoInicial || 0)
 
   return {
@@ -70,12 +88,65 @@ function calcularResumoConta(conta, transacoes = []) {
     saldoAtual: saldoInicial + entradas - saidas,
     quantidadeLancamentos: vinculadas.length,
     quantidadeLancamentosEfetivados: movimentadas.length,
+    quantidadeLancamentosPendentes: pendentes.length,
   }
+}
+
+function montarContasDerivadas(contasCadastradas, transacoes) {
+  const porNome = new Map()
+
+  contasCadastradas.forEach((conta) => {
+    const nome = tituloConta(conta.nome)
+    if (!nome) return
+    porNome.set(normalizarTexto(nome), { ...conta, nome })
+  })
+
+  const tags = lerArray(CONTA_TAGS_KEY)
+  const nomesTags = tags.length ? tags : TAGS_PADRAO
+
+  nomesTags.forEach((tag) => {
+    const nome = tituloConta(tag)
+    if (!nome) return
+    const key = normalizarTexto(nome)
+    if (!porNome.has(key)) {
+      porNome.set(key, {
+        id: `tag-${key.replace(/[^a-z0-9]+/g, '-')}`,
+        nome,
+        tipo: tipoDaConta(nome),
+        banco: nome,
+        saldoInicial: 0,
+        responsavel: 'Financeiro',
+        status: 'Ativa',
+        derivada: true,
+      })
+    }
+  })
+
+  transacoes.forEach((transacao) => {
+    const nome = tituloConta(transacao.conta || transacao.forma)
+    if (!nome) return
+    const key = normalizarTexto(nome)
+    if (!porNome.has(key)) {
+      porNome.set(key, {
+        id: `mov-${key.replace(/[^a-z0-9]+/g, '-')}`,
+        nome,
+        tipo: tipoDaConta(nome),
+        banco: nome,
+        saldoInicial: 0,
+        responsavel: 'Financeiro',
+        status: 'Ativa',
+        derivada: true,
+      })
+    }
+  })
+
+  return Array.from(porNome.values())
 }
 
 function aplicarSaldosCalculados(contas) {
   const transacoes = lerArray(TRANSACOES_KEY)
-  return contas.map((conta) => ({
+  const contasComDerivadas = montarContasDerivadas(contas, transacoes)
+  return contasComDerivadas.map((conta) => ({
     ...conta,
     ...calcularResumoConta(conta, transacoes),
   }))
