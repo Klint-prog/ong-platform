@@ -438,9 +438,13 @@ export function EditarInstitucionalPage() {
       }}
       campos={[
         { name: 'nome', label: 'Nome da organização', placeholder: 'Associação...' },
+        { name: 'nomeFantasia', label: 'Nome fantasia / nome de exibição', placeholder: 'Ex.: AV Associação Vadai' },
+        { name: 'slogan', label: 'Slogan', placeholder: 'Ex.: Caridade que motiva' },
         { name: 'cnpj', label: 'CNPJ', placeholder: '00.000.000/0000-00' },
         { name: 'atuacao', label: 'Área de atuação', placeholder: 'Desenvolvimento rural...' },
         { name: 'endereco', label: 'Endereço', placeholder: 'Cidade - UF' },
+        { name: 'telefone', label: 'Telefone institucional', placeholder: '(81) 99999-9999' },
+        { name: 'email', label: 'E-mail institucional', type: 'email', placeholder: 'contato@ong.org.br' },
         { name: 'missao', label: 'Missão', type: 'textarea', placeholder: 'Descreva a missão da ONG...' },
         { name: 'visao', label: 'Visão', type: 'textarea', placeholder: 'Descreva a visão da ONG...' },
         { name: 'presidente', label: 'Presidente', placeholder: 'Nome do(a) presidente' },
