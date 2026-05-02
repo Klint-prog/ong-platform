@@ -3,6 +3,7 @@ import {
   AlertTriangle,
   CheckCircle2,
   Download,
+  ExternalLink,
   Eye,
   FileArchive,
   FileImage,
@@ -12,7 +13,6 @@ import {
   Grid2X2,
   List,
   MoreVertical,
-  MoveRight,
   Pencil,
   Plus,
   Search,
@@ -73,6 +73,15 @@ function getFileIcon(doc) {
   return FileText
 }
 
+function dataURLtoBlob(dataUrl) {
+  const [header, base64] = dataUrl.split(',')
+  const mime = header.match(/:(.*?);/)?.[1] || 'application/octet-stream'
+  const binary = atob(base64 || '')
+  const bytes = new Uint8Array(binary.length)
+  for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i)
+  return new Blob([bytes], { type: mime })
+}
+
 function baixarBlob(nome, conteudo, mime = 'application/json') {
   const blob = conteudo?.startsWith?.('data:') ? dataURLtoBlob(conteudo) : new Blob([conteudo], { type: mime })
   const url = URL.createObjectURL(blob)
@@ -85,13 +94,13 @@ function baixarBlob(nome, conteudo, mime = 'application/json') {
   URL.revokeObjectURL(url)
 }
 
-function dataURLtoBlob(dataUrl) {
-  const [header, base64] = dataUrl.split(',')
-  const mime = header.match(/:(.*?);/)?.[1] || 'application/octet-stream'
-  const binary = atob(base64 || '')
-  const bytes = new Uint8Array(binary.length)
-  for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i)
-  return new Blob([bytes], { type: mime })
+function abrirConteudoNovaAba(doc) {
+  if (!doc?.conteudo) return
+  const blob = dataURLtoBlob(doc.conteudo)
+  const url = URL.createObjectURL(blob)
+  const win = window.open(url, '_blank', 'noopener,noreferrer')
+  if (!win) window.alert('O navegador bloqueou a nova aba. Libere pop-ups para esta página.')
+  setTimeout(() => URL.revokeObjectURL(url), 60_000)
 }
 
 function getBreadcrumbs(pastas, folderId) {
@@ -113,6 +122,7 @@ export default function Documentos() {
   const [modoVisual, setModoVisual] = useState('lista')
   const [uploadAberto, setUploadAberto] = useState(false)
   const [previewDoc, setPreviewDoc] = useState(null)
+  const [previewMaximizado, setPreviewMaximizado] = useState(false)
   const [editandoDoc, setEditandoDoc] = useState(null)
   const [novoNomePasta, setNovoNomePasta] = useState('')
   const [menuPasta, setMenuPasta] = useState(false)
@@ -121,7 +131,6 @@ export default function Documentos() {
 
   const pastaAtual = pastas.find((pasta) => String(pasta.id) === String(folderAtual)) || pastas[0]
   const breadcrumbs = getBreadcrumbs(pastas, folderAtual)
-
   const subpastas = useMemo(() => pastas.filter((pasta) => String(pasta.parentId) === String(folderAtual)), [pastas, folderAtual])
   const documentosDaPasta = useMemo(() => docs.filter((doc) => String(doc.folderId || 'root') === String(folderAtual)), [docs, folderAtual])
 
@@ -133,11 +142,15 @@ export default function Documentos() {
 
   const totalPendencias = docs.filter((doc) => ['PENDENTE_REVISAO', 'VENCE_EM_BREVE'].includes(doc.status)).length
   const totalValidados = docs.filter((doc) => doc.status === 'VALIDADO').length
-  const totalComprovantes = docs.filter((doc) => doc.categoria === 'Comprovante').length
 
   const recarregar = () => {
     setPastas(listarPastas())
     setDocs(listarDocumentos())
+  }
+
+  const abrirPreview = (doc) => {
+    setPreviewDoc(doc)
+    setPreviewMaximizado(false)
   }
 
   const criarNovaPasta = () => {
@@ -218,7 +231,7 @@ export default function Documentos() {
     const cfg = statusConfig[doc.status] || statusConfig.PENDENTE_REVISAO
     const StatusIcon = cfg.icon
     return (
-      <div key={doc.id} className="card" style={{ display: 'grid', gap: 10, cursor: 'pointer' }} onClick={() => setPreviewDoc(doc)}>
+      <div key={doc.id} className="card" style={{ display: 'grid', gap: 10, cursor: 'pointer' }} onClick={() => abrirPreview(doc)}>
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', minWidth: 0 }}>
             <div className="stat-icon" style={{ width: 38, height: 38 }}><Icon size={18} /></div>
@@ -326,7 +339,7 @@ export default function Documentos() {
                           <td>{doc.projeto || doc.relacionadoTipo || '-'}</td>
                           <td><span className={`badge ${cfg.badge}`}>{cfg.label}</span></td>
                           <td>{formatBytes(doc.tamanho)}</td>
-                          <td><DocActions doc={doc} onPreview={setPreviewDoc} onEdit={setEditandoDoc} onDownload={baixarDocumento} onDelete={excluirDocumento} onValidate={validarDocumento} /></td>
+                          <td><DocActions doc={doc} onPreview={abrirPreview} onEdit={setEditandoDoc} onDownload={baixarDocumento} onDelete={excluirDocumento} onValidate={validarDocumento} /></td>
                         </tr>
                       )
                     })}
@@ -355,7 +368,7 @@ export default function Documentos() {
         </Modal>
       )}
 
-      {previewDoc && <PreviewModal doc={previewDoc} pastas={pastas} onClose={() => setPreviewDoc(null)} onDownload={baixarDocumento} onDelete={excluirDocumento} onEdit={setEditandoDoc} onValidate={validarDocumento} onMove={moverDocumento} />}
+      {previewDoc && <PreviewModal doc={previewDoc} pastas={pastas} maximizado={previewMaximizado} onToggleMaximizado={() => setPreviewMaximizado((v) => !v)} onClose={() => setPreviewDoc(null)} onDownload={baixarDocumento} onDelete={excluirDocumento} onEdit={setEditandoDoc} onValidate={validarDocumento} onMove={moverDocumento} />}
 
       {editandoDoc && (
         <Modal onClose={() => setEditandoDoc(null)} title="Editar metadados do documento">
@@ -382,10 +395,59 @@ function Modal({ title, children, onClose }) {
   return <div style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.55)', zIndex: 50, display: 'grid', placeItems: 'center', padding: 24 }}><div className="card" style={{ width: 'min(860px, 100%)', maxHeight: '90vh', overflowY: 'auto', display: 'grid', gap: 14 }}><div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><h2 style={{ fontFamily: 'var(--font-display)', fontSize: 22 }}>{title}</h2><button className="btn btn-ghost btn-icon" onClick={onClose}><X size={18} /></button></div>{children}</div></div>
 }
 
-function PreviewModal({ doc, pastas, onClose, onDownload, onDelete, onEdit, onValidate, onMove }) {
+function PreviewModal({ doc, pastas, maximizado, onToggleMaximizado, onClose, onDownload, onDelete, onEdit, onValidate, onMove }) {
   const Icon = getFileIcon(doc)
   const cfg = statusConfig[doc.status] || statusConfig.PENDENTE_REVISAO
-  return <Modal title="Pré-visualização do documento" onClose={onClose}><div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: 16 }}><div style={{ minHeight: 360, border: '1px solid var(--gray-100)', borderRadius: 12, overflow: 'hidden', display: 'grid', placeItems: 'center', background: 'var(--gray-50)' }}>{doc.conteudo && (doc.mimeType?.startsWith('image/') || doc.mimeType === 'application/pdf') ? <iframe title={doc.nome} src={doc.conteudo} style={{ width: '100%', height: 420, border: 0 }} /> : <div style={{ textAlign: 'center', color: 'var(--gray-500)' }}><Icon size={54} /><div style={{ marginTop: 10 }}>Preview indisponível para este formato.</div></div>}</div><div style={{ display: 'grid', gap: 10, alignContent: 'start' }}><h3>{doc.nome}</h3><span className={`badge ${cfg.badge}`} style={{ width: 'fit-content' }}>{cfg.label}</span><div style={{ fontSize: 13, color: 'var(--gray-500)' }}>Categoria: <strong>{doc.categoria}</strong></div><div style={{ fontSize: 13, color: 'var(--gray-500)' }}>Módulo: <strong>{moduloLabels[doc.modulo] || doc.modulo}</strong></div><div style={{ fontSize: 13, color: 'var(--gray-500)' }}>Tamanho: <strong>{formatBytes(doc.tamanho)}</strong></div><div style={{ fontSize: 13, color: 'var(--gray-500)' }}>Validade: <strong>{doc.validade || 'Sem validade'}</strong></div><div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>{(doc.tags || []).map((tag) => <span key={tag} className="badge badge-gray"><Tags size={11} /> {tag}</span>)}</div><select value={doc.folderId || 'root'} onChange={(e) => onMove(doc, e.target.value)}>{pastas.map((pasta) => <option key={pasta.id} value={pasta.id}>{pasta.nome}</option>)}</select><div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}><button className="btn btn-outline" onClick={() => onEdit(doc)}><Pencil size={14} /> Editar</button>{doc.status !== 'VALIDADO' && <button className="btn btn-outline" onClick={() => onValidate(doc)}><ShieldCheck size={14} /> Validar</button>}<button className="btn btn-outline" onClick={() => onDownload(doc)}><Download size={14} /> Baixar</button><button className="btn btn-outline" onClick={() => onDelete(doc)}><Trash2 size={14} /> Excluir</button></div></div></div></Modal>
+  const podePreview = doc.conteudo && (doc.mimeType?.startsWith('image/') || doc.mimeType === 'application/pdf')
+  const largura = maximizado ? 'calc(100vw - 40px)' : 'min(1380px, calc(100vw - 56px))'
+  const altura = maximizado ? 'calc(100vh - 40px)' : 'min(86vh, 920px)'
+  const alturaPreview = maximizado ? 'calc(100vh - 140px)' : 'min(72vh, 760px)'
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.62)', zIndex: 50, display: 'grid', placeItems: 'center', padding: maximizado ? 20 : 28 }}>
+      <div className="card" style={{ width: largura, height: altura, maxHeight: 'calc(100vh - 40px)', resize: maximizado ? 'none' : 'both', overflow: 'auto', display: 'grid', gridTemplateRows: 'auto 1fr', gap: 14, minWidth: 980, minHeight: 620 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+          <div>
+            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 22 }}>Pré-visualização do documento</h2>
+            <p style={{ marginTop: 4, color: 'var(--gray-400)', fontSize: 12 }}>Janela ampliada e redimensionável. Para leitura completa, use Abrir em nova aba.</p>
+          </div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+            {podePreview && <button className="btn btn-sm btn-outline" onClick={() => abrirConteudoNovaAba(doc)}><ExternalLink size={13} /> Abrir em nova aba</button>}
+            <button className="btn btn-sm btn-outline" onClick={onToggleMaximizado}>{maximizado ? 'Restaurar' : 'Maximizar'}</button>
+            <button className="btn btn-ghost btn-icon" onClick={onClose}><X size={18} /></button>
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: maximizado ? 'minmax(0, 1fr) 320px' : 'minmax(0, 1fr) 360px', gap: 18, minHeight: 0 }}>
+          <div style={{ border: '1px solid var(--gray-100)', borderRadius: 12, overflow: 'hidden', display: 'grid', placeItems: 'center', background: 'var(--gray-50)', minHeight: 480 }}>
+            {podePreview ? (
+              <iframe title={doc.nome} src={doc.conteudo} style={{ width: '100%', height: alturaPreview, border: 0, background: '#fff' }} />
+            ) : (
+              <div style={{ textAlign: 'center', color: 'var(--gray-500)' }}><Icon size={64} /><div style={{ marginTop: 10 }}>Preview indisponível para este formato.</div><button className="btn btn-outline" style={{ marginTop: 14 }} onClick={() => onDownload(doc)}><Download size={14} /> Baixar arquivo</button></div>
+            )}
+          </div>
+
+          <aside style={{ display: 'grid', gap: 10, alignContent: 'start', overflowY: 'auto', paddingRight: 4 }}>
+            <h3 style={{ lineHeight: 1.35 }}>{doc.nome}</h3>
+            <span className={`badge ${cfg.badge}`} style={{ width: 'fit-content' }}>{cfg.label}</span>
+            <div style={{ fontSize: 13, color: 'var(--gray-500)' }}>Categoria: <strong>{doc.categoria}</strong></div>
+            <div style={{ fontSize: 13, color: 'var(--gray-500)' }}>Módulo: <strong>{moduloLabels[doc.modulo] || doc.modulo}</strong></div>
+            <div style={{ fontSize: 13, color: 'var(--gray-500)' }}>Tamanho: <strong>{formatBytes(doc.tamanho)}</strong></div>
+            <div style={{ fontSize: 13, color: 'var(--gray-500)' }}>Validade: <strong>{doc.validade || 'Sem validade'}</strong></div>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>{(doc.tags || []).map((tag) => <span key={tag} className="badge badge-gray"><Tags size={11} /> {tag}</span>)}</div>
+            <select value={doc.folderId || 'root'} onChange={(e) => onMove(doc, e.target.value)}>{pastas.map((pasta) => <option key={pasta.id} value={pasta.id}>{pasta.nome}</option>)}</select>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <button className="btn btn-outline" onClick={() => onEdit(doc)}><Pencil size={14} /> Editar</button>
+              {doc.status !== 'VALIDADO' && <button className="btn btn-outline" onClick={() => onValidate(doc)}><ShieldCheck size={14} /> Validar</button>}
+              {podePreview && <button className="btn btn-outline" onClick={() => abrirConteudoNovaAba(doc)}><ExternalLink size={14} /> Nova aba</button>}
+              <button className="btn btn-outline" onClick={() => onDownload(doc)}><Download size={14} /> Baixar</button>
+              <button className="btn btn-outline" onClick={() => onDelete(doc)}><Trash2 size={14} /> Excluir</button>
+            </div>
+          </aside>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 function EmptyState({ texto }) {
