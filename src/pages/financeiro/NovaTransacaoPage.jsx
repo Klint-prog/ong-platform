@@ -5,8 +5,66 @@ import { addTransacaoStorage } from './transacoesStorage'
 import { addOrcamentoStorage } from './financeiroStorage'
 
 const TAGS_KEY = 'ong_financeiro_conta_tags'
+const CATEGORIAS_KEY = 'ong_financeiro_categorias'
 const TAGS_PADRAO = ['PIX', 'Conta Corrente', 'Boleto', 'Cartão']
-const CATEGORIAS_RECEITA = ['Doações', 'Repasses', 'Convênio']
+
+const CATEGORIAS_PADRAO = {
+  RECEITA: [
+    'Doações',
+    'Contribuições de associados',
+    'Repasses públicos',
+    'Convênios',
+    'Editais',
+    'Patrocínios',
+    'Venda de produtos/serviços',
+    'Eventos beneficentes',
+    'Rendimentos financeiros',
+    'Reembolso recebido',
+    'Outras receitas',
+  ],
+  DESPESA: [
+    'Alimentação',
+    'Transporte',
+    'Material de escritório',
+    'Impressões e documentos',
+    'Serviços administrativos',
+    'Contabilidade',
+    'Jurídico',
+    'Comunicação e marketing',
+    'Internet e telefonia',
+    'Água, energia e aluguel',
+    'Manutenção',
+    'Equipamentos',
+    'Ajuda humanitária',
+    'Capacitação e oficinas',
+    'Eventos',
+    'Taxas bancárias',
+    'Outras despesas',
+  ],
+  ORCAMENTO: [
+    'Projeto social',
+    'Projeto agropecuário',
+    'Capacitação',
+    'Infraestrutura',
+    'Comunicação',
+    'Administrativo',
+    'Emergencial',
+    'Convênio',
+    'Edital',
+    'Evento',
+    'Prestação de contas',
+    'Reserva técnica',
+  ],
+}
+
+const NATUREZAS_RECURSO = [
+  'Livre',
+  'Vinculado a projeto',
+  'Vinculado a convênio',
+  'Vinculado a edital',
+  'Reembolso',
+  'Contrapartida',
+]
 
 function carregarTagsFinanceiras() {
   if (typeof window === 'undefined') return TAGS_PADRAO
@@ -21,6 +79,30 @@ function carregarTagsFinanceiras() {
 function salvarTagsFinanceiras(tags) {
   const normalizadas = Array.from(new Set(tags.map((tag) => String(tag || '').trim()).filter(Boolean)))
   window.localStorage.setItem(TAGS_KEY, JSON.stringify(normalizadas))
+  return normalizadas
+}
+
+function carregarCategoriasFinanceiras() {
+  if (typeof window === 'undefined') return CATEGORIAS_PADRAO
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(CATEGORIAS_KEY) || '{}')
+    return {
+      RECEITA: Array.isArray(parsed.RECEITA) && parsed.RECEITA.length ? parsed.RECEITA : CATEGORIAS_PADRAO.RECEITA,
+      DESPESA: Array.isArray(parsed.DESPESA) && parsed.DESPESA.length ? parsed.DESPESA : CATEGORIAS_PADRAO.DESPESA,
+      ORCAMENTO: Array.isArray(parsed.ORCAMENTO) && parsed.ORCAMENTO.length ? parsed.ORCAMENTO : CATEGORIAS_PADRAO.ORCAMENTO,
+    }
+  } catch {
+    return CATEGORIAS_PADRAO
+  }
+}
+
+function salvarCategoriasFinanceiras(categorias) {
+  const normalizadas = {
+    RECEITA: Array.from(new Set((categorias.RECEITA || []).map((item) => String(item || '').trim()).filter(Boolean))),
+    DESPESA: Array.from(new Set((categorias.DESPESA || []).map((item) => String(item || '').trim()).filter(Boolean))),
+    ORCAMENTO: Array.from(new Set((categorias.ORCAMENTO || []).map((item) => String(item || '').trim()).filter(Boolean))),
+  }
+  window.localStorage.setItem(CATEGORIAS_KEY, JSON.stringify(normalizadas))
   return normalizadas
 }
 
@@ -88,10 +170,8 @@ function statusPorTipo(tipo) {
   ]
 }
 
-function categoriaPadrao(tipo) {
-  if (tipo === 'RECEITA') return 'Doações'
-  if (tipo === 'DESPESA') return 'Doações'
-  return 'Doações'
+function categoriaPadrao(tipo, categorias = CATEGORIAS_PADRAO) {
+  return categorias[tipo]?.[0] || CATEGORIAS_PADRAO[tipo]?.[0] || 'Outros'
 }
 
 function statusPadrao(tipo, status) {
@@ -113,13 +193,21 @@ function placeholderOrigem(tipo) {
   return 'Ex.: Secretaria, empresa parceira, convênio, edital...'
 }
 
+function descricaoCategoria(tipo) {
+  if (tipo === 'RECEITA') return 'Classifique a origem do recurso recebido.'
+  if (tipo === 'DESPESA') return 'Classifique a finalidade do gasto.'
+  return 'Classifique a finalidade do planejamento financeiro.'
+}
+
 export default function NovaTransacaoPage() {
   const navigate = useNavigate()
+  const categoriasIniciais = useMemo(() => carregarCategoriasFinanceiras(), [])
   const [form, setForm] = useState({
     tipo: 'RECEITA',
     descricao: '',
     valor: '',
-    categoria: 'Doações',
+    categoria: categoriaPadrao('RECEITA', categoriasIniciais),
+    naturezaRecurso: 'Livre',
     origemEntidade: '',
     projeto: 'Fundo Geral',
     conta: 'PIX',
@@ -127,6 +215,8 @@ export default function NovaTransacaoPage() {
     observacoes: '',
   })
   const [tags, setTags] = useState(() => carregarTagsFinanceiras())
+  const [categorias, setCategorias] = useState(() => categoriasIniciais)
+  const [novaCategoria, setNovaCategoria] = useState('')
   const [novaTag, setNovaTag] = useState('')
   const [editandoTag, setEditandoTag] = useState(null)
   const [valorTagEdicao, setValorTagEdicao] = useState('')
@@ -135,6 +225,7 @@ export default function NovaTransacaoPage() {
 
   const statusOptions = useMemo(() => statusPorTipo(form.tipo), [form.tipo])
   const tipoAtual = tipos.find((tipo) => tipo.id === form.tipo) || tipos[0]
+  const categoriasDoTipo = categorias[form.tipo] || CATEGORIAS_PADRAO[form.tipo] || []
 
   const atualizarCampo = (campo, valor) => {
     setForm((atual) => ({ ...atual, [campo]: valor }))
@@ -145,8 +236,21 @@ export default function NovaTransacaoPage() {
       ...atual,
       tipo,
       status: '',
-      categoria: CATEGORIAS_RECEITA.includes(atual.categoria) ? atual.categoria : categoriaPadrao(tipo),
+      categoria: categoriaPadrao(tipo, categorias),
+      naturezaRecurso: tipo === 'DESPESA' ? '' : (atual.naturezaRecurso || 'Livre'),
     }))
+  }
+
+  const adicionarCategoria = () => {
+    const valor = novaCategoria.trim()
+    if (!valor) return
+    const atualizadas = salvarCategoriasFinanceiras({
+      ...categorias,
+      [form.tipo]: [...(categorias[form.tipo] || []), valor],
+    })
+    setCategorias(atualizadas)
+    atualizarCampo('categoria', valor)
+    setNovaCategoria('')
   }
 
   const adicionarTag = () => {
@@ -198,7 +302,8 @@ export default function NovaTransacaoPage() {
     const dataHoje = new Date().toISOString().slice(0, 10)
     const valor = Number(form.valor || 0)
     const descricao = form.descricao || (tipo === 'ORCAMENTO' ? 'Orçamento sem descrição' : 'Transação sem descrição')
-    const categoria = form.categoria || categoriaPadrao(tipo)
+    const categoria = form.categoria || categoriaPadrao(tipo, categorias)
+    const naturezaRecurso = form.naturezaRecurso || ''
     const projeto = form.projeto || 'Fundo Geral'
     const conta = form.conta || tags[0] || 'PIX'
     const origemEntidade = form.origemEntidade.trim()
@@ -207,6 +312,7 @@ export default function NovaTransacaoPage() {
       addOrcamentoStorage({
         projeto,
         categoria,
+        naturezaRecurso,
         descricao,
         origemEntidade,
         nomeEntidade: origemEntidade,
@@ -227,6 +333,7 @@ export default function NovaTransacaoPage() {
       tipo,
       descricao,
       categoria,
+      naturezaRecurso,
       origemEntidade,
       nomeDoador: tipo === 'RECEITA' ? origemEntidade : '',
       nomeEntidade: origemEntidade,
@@ -307,14 +414,30 @@ export default function NovaTransacaoPage() {
           <label style={{ display: 'grid', gap: 6 }}>
             <span style={{ fontSize: 13, fontWeight: 600 }}>Categoria</span>
             <select value={form.categoria} onChange={(e) => atualizarCampo('categoria', e.target.value)}>
-              {CATEGORIAS_RECEITA.map((categoria) => <option key={categoria} value={categoria}>{categoria}</option>)}
+              {categoriasDoTipo.map((categoria) => <option key={categoria} value={categoria}>{categoria}</option>)}
             </select>
+            <small style={{ color: 'var(--gray-500)' }}>{descricaoCategoria(form.tipo)}</small>
           </label>
           <label style={{ display: 'grid', gap: 6 }}>
             <span style={{ fontSize: 13, fontWeight: 600 }}>{rotuloOrigem(form.tipo)}</span>
             <input value={form.origemEntidade} onChange={(e) => atualizarCampo('origemEntidade', e.target.value)} placeholder={placeholderOrigem(form.tipo)} />
           </label>
         </div>
+
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          <input value={novaCategoria} onChange={(e) => setNovaCategoria(e.target.value)} placeholder={`Nova categoria de ${tipoAtual.titulo.toLowerCase()}...`} style={{ maxWidth: 360 }} />
+          <button type="button" className="btn btn-outline" onClick={adicionarCategoria}><Plus size={15} /> Adicionar categoria</button>
+        </div>
+
+        {form.tipo !== 'DESPESA' && (
+          <label style={{ display: 'grid', gap: 6 }}>
+            <span style={{ fontSize: 13, fontWeight: 600 }}>Natureza do recurso</span>
+            <select value={form.naturezaRecurso} onChange={(e) => atualizarCampo('naturezaRecurso', e.target.value)}>
+              {NATUREZAS_RECURSO.map((natureza) => <option key={natureza} value={natureza}>{natureza}</option>)}
+            </select>
+            <small style={{ color: 'var(--gray-500)' }}>Ajuda a separar recurso livre de recurso vinculado a projeto, convênio ou edital.</small>
+          </label>
+        )}
 
         <div className="grid-2">
           <label style={{ display: 'grid', gap: 6 }}>
