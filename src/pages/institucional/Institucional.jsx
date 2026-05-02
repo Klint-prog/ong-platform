@@ -5,7 +5,7 @@ import { loadInstitucional, saveInstitucional } from './institucionalStorage'
 import { AV_VADAI_LOGO_DATA_URL } from '../financeiro/financeiroLogo'
 
 const DOCS_KEY = 'ong_institucional_documentos_criticos'
-const MAX_FILE_SIZE_BYTES = 4 * 1024 * 1024
+const MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024
 
 const documentosPadrao = [
   { id: 'estatuto-social', nome: 'Estatuto social', status: 'Pendente de arquivo', vencimento: 'Sem vencimento', badge: 'badge-yellow' },
