@@ -1,0 +1,320 @@
+/* ================================================================
+   Financeiro — pré-visualização e PDF institucional
+   ================================================================ */
+
+.financeiro-preview-overlay {
+  position: fixed;
+  top: var(--topbar-h, 64px);
+  left: var(--sidebar-current-w, 280px);
+  right: 0;
+  bottom: 0;
+  z-index: 55;
+  background: rgba(15, 23, 42, .62);
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.financeiro-preview-shell {
+  width: min(1120px, 100%);
+  max-height: calc(100dvh - var(--topbar-h, 64px) - 40px);
+  overflow: auto;
+  background: #f8fafc;
+  border: 1px solid var(--gray-100);
+  border-radius: 22px;
+  box-shadow: 0 24px 70px rgba(15, 23, 42, .24);
+  padding: 18px;
+}
+
+.financeiro-preview-shell.is-maximized {
+  width: 100%;
+  height: 100%;
+  max-height: calc(100dvh - var(--topbar-h, 64px) - 40px);
+}
+
+.financeiro-preview-toolbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+  margin-bottom: 16px;
+}
+
+.financeiro-preview-toolbar h2 {
+  font-family: var(--font-display);
+  font-size: 22px;
+  margin: 0 0 4px;
+}
+
+.financeiro-preview-toolbar p {
+  color: var(--gray-400);
+  font-size: 13px;
+}
+
+.financeiro-documento-print {
+  --financeiro-accent: #16a34a;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 18px;
+  padding: 28px;
+  color: #111827;
+  max-width: 980px;
+  margin: 0 auto;
+  box-shadow: 0 16px 36px rgba(15, 23, 42, .08);
+}
+
+.financeiro-doc-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  border-bottom: 4px solid var(--financeiro-accent);
+  padding-bottom: 18px;
+  margin-bottom: 22px;
+}
+
+.financeiro-doc-brand {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.financeiro-doc-brand img {
+  width: 118px;
+  height: auto;
+  object-fit: contain;
+}
+
+.financeiro-doc-brand h1 {
+  font-family: var(--font-display);
+  font-size: 22px;
+  line-height: 1.15;
+  margin: 0;
+}
+
+.financeiro-doc-brand p {
+  margin: 6px 0 0;
+  color: #4b5563;
+  font-size: 13px;
+}
+
+.financeiro-doc-meta {
+  display: grid;
+  justify-items: end;
+  align-content: start;
+  gap: 6px;
+  min-width: 190px;
+  text-align: right;
+}
+
+.financeiro-doc-meta strong {
+  font-size: 14px;
+  color: #111827;
+}
+
+.financeiro-doc-meta small {
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.financeiro-doc-title {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  align-items: stretch;
+  margin-bottom: 22px;
+  padding: 18px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #f0fdf4, #eff6ff);
+}
+
+.financeiro-doc-title span {
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: #16a34a;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.financeiro-doc-title h2 {
+  font-family: var(--font-display);
+  font-size: 27px;
+  line-height: 1.1;
+  margin: 6px 0 0;
+}
+
+.financeiro-doc-total {
+  min-width: 210px;
+  border-radius: 14px;
+  padding: 16px;
+  color: #fff;
+  background: linear-gradient(135deg, #16a34a, #0284c7);
+  display: grid;
+  align-content: center;
+  justify-items: end;
+}
+
+.financeiro-doc-total.despesa {
+  background: linear-gradient(135deg, #dc2626, #f97316);
+}
+
+.financeiro-doc-total small {
+  color: rgba(255, 255, 255, .78);
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  font-weight: 800;
+}
+
+.financeiro-doc-total strong {
+  font-size: 28px;
+  font-family: var(--font-display);
+}
+
+.financeiro-doc-org {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 22px;
+}
+
+.financeiro-doc-org div,
+.financeiro-doc-table div {
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 12px 14px;
+  background: #fff;
+}
+
+.financeiro-doc-org strong,
+.financeiro-doc-table span {
+  display: block;
+  color: #6b7280;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  margin-bottom: 4px;
+}
+
+.financeiro-doc-org span,
+.financeiro-doc-table strong {
+  color: #111827;
+  font-size: 14px;
+}
+
+.financeiro-doc-table {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.financeiro-doc-declaracao {
+  margin-top: 22px;
+  padding: 18px;
+  background: #f9fafb;
+  border-left: 5px solid var(--financeiro-accent);
+  border-radius: 14px;
+  color: #374151;
+}
+
+.financeiro-doc-declaracao p + p {
+  margin-top: 8px;
+}
+
+.financeiro-doc-footer {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  margin-top: 34px;
+}
+
+.financeiro-doc-footer div {
+  border-top: 1px solid #111827;
+  padding-top: 10px;
+}
+
+.financeiro-doc-footer strong,
+.financeiro-doc-footer span {
+  display: block;
+}
+
+.financeiro-doc-footer span {
+  color: #4b5563;
+  margin-top: 4px;
+  font-size: 13px;
+}
+
+@media (max-width: 760px) {
+  .financeiro-preview-overlay {
+    left: 0;
+    padding: 12px;
+  }
+
+  .financeiro-doc-header,
+  .financeiro-doc-title,
+  .financeiro-doc-footer {
+    grid-template-columns: 1fr;
+    flex-direction: column;
+  }
+
+  .financeiro-doc-org,
+  .financeiro-doc-table {
+    grid-template-columns: 1fr;
+  }
+
+  .financeiro-doc-total {
+    justify-items: start;
+  }
+}
+
+@media print {
+  .financeiro-documento-print,
+  .financeiro-documento-print * {
+    visibility: visible !important;
+  }
+
+  .financeiro-documento-print {
+    position: absolute !important;
+    inset: 0 auto auto 0 !important;
+    width: 100% !important;
+    max-width: none !important;
+    min-height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    background: #fff !important;
+    color: #111827 !important;
+  }
+
+  .financeiro-preview-overlay,
+  .financeiro-preview-shell {
+    position: static !important;
+    inset: auto !important;
+    width: 100% !important;
+    max-height: none !important;
+    overflow: visible !important;
+    padding: 0 !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    background: transparent !important;
+  }
+
+  .financeiro-doc-header,
+  .financeiro-doc-title,
+  .financeiro-doc-org,
+  .financeiro-doc-table,
+  .financeiro-doc-declaracao,
+  .financeiro-doc-footer {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .financeiro-doc-brand img {
+    width: 105px !important;
+  }
+
+  .financeiro-doc-title h2 {
+    font-size: 22pt !important;
+  }
+}
