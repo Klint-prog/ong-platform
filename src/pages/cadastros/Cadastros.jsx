@@ -1,47 +1,174 @@
 import { useMemo, useState } from 'react'
-import { ArrowLeft, Save, Send, Upload, X } from 'lucide-react'
+import { ArrowLeft, Check, Save, Send, Trash2, Upload, X } from 'lucide-react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import CadastroEntity from './CadastroEntity'
-import { findPessoaById, upsertPessoa } from '../pessoas/pessoasStorage'
+import {
+  findPessoaById,
+  formatarTipoPessoa,
+  listarTiposPessoa,
+  normalizarTipoPessoa,
+  salvarTiposPessoa,
+  TIPOS_PESSOA_PADRAO,
+  upsertPessoa,
+} from '../pessoas/pessoasStorage'
 import { loadInstitucional, saveInstitucional } from '../institucional/institucionalStorage'
 import { addTransacaoStorage } from '../financeiro/transacoesStorage'
 
-const CAMPOS_PESSOA = [
-  { name: 'nome', label: 'Nome completo', placeholder: 'Ex.: Maria da Silva' },
-  { name: 'email', label: 'E-mail', type: 'email', placeholder: 'nome@email.com' },
-  { name: 'telefone', label: 'Telefone', placeholder: '(81) 99999-9999' },
-  { name: 'tipo', label: 'Tipo', placeholder: 'VOLUNTARIO / BENEFICIARIO / MEMBRO / DOADOR' },
-]
-
-export function NovaPessoaPage() {
+function PessoaFormPage({ modo }) {
   const navigate = useNavigate()
+  const { id } = useParams()
+  const pessoa = useMemo(() => id ? findPessoaById(id) : null, [id])
+  const [tipos, setTipos] = useState(() => listarTiposPessoa())
+  const [novoTipo, setNovoTipo] = useState('')
+  const [editandoTipo, setEditandoTipo] = useState(null)
+  const [valorEdicaoTipo, setValorEdicaoTipo] = useState('')
+  const [form, setForm] = useState(() => ({
+    nome: pessoa?.nome || '',
+    email: pessoa?.email || '',
+    telefone: pessoa?.telefone || '',
+    tipo: pessoa?.tipo || listarTiposPessoa()[0] || 'MEMBRO',
+    status: pessoa?.status || 'ATIVO',
+    horas: pessoa?.horas || 0,
+    projetos: pessoa?.projetos || 0,
+  }))
+
+  const tipoSelecionado = tipos.includes(form.tipo) ? form.tipo : tipos[0] || 'MEMBRO'
+  const atualizarCampo = (campo, valor) => setForm((atual) => ({ ...atual, [campo]: valor }))
+
+  const adicionarTipo = () => {
+    const normalizado = normalizarTipoPessoa(novoTipo)
+    if (!normalizado || tipos.includes(normalizado)) return
+    const atualizados = salvarTiposPessoa([...tipos, normalizado])
+    setTipos(atualizados)
+    setForm((atual) => ({ ...atual, tipo: normalizado }))
+    setNovoTipo('')
+  }
+
+  const salvarEdicaoTipo = () => {
+    if (!editandoTipo) return
+    const normalizado = normalizarTipoPessoa(valorEdicaoTipo)
+    if (!normalizado) return
+    const atualizados = salvarTiposPessoa(tipos.map((tipo) => tipo === editandoTipo ? normalizado : tipo))
+    setTipos(atualizados)
+    setForm((atual) => atual.tipo === editandoTipo ? { ...atual, tipo: normalizado } : atual)
+    setEditandoTipo(null)
+    setValorEdicaoTipo('')
+  }
+
+  const excluirTipo = (tipo) => {
+    if (TIPOS_PESSOA_PADRAO.includes(tipo)) return
+    const fallback = TIPOS_PESSOA_PADRAO[0]
+    const atualizados = salvarTiposPessoa(tipos.filter((item) => item !== tipo))
+    setTipos(atualizados)
+    setForm((atual) => atual.tipo === tipo ? { ...atual, tipo: fallback } : atual)
+  }
+
+  const salvar = (event) => {
+    event.preventDefault()
+    upsertPessoa({ ...form, tipo: tipoSelecionado }, id)
+    navigate('/pessoas')
+  }
+
+  if (modo === 'editar' && id && !pessoa) {
+    return (
+      <div className="card" style={{ display: 'grid', gap: 12 }}>
+        <h1 className="page-title">Pessoa não encontrada</h1>
+        <button className="btn btn-outline" onClick={() => navigate('/pessoas')}><ArrowLeft size={16} /> Voltar</button>
+      </div>
+    )
+  }
 
   return (
-    <CadastroEntity titulo="Nova pessoa" subtitulo="Cadastre membros, voluntários, beneficiários ou doadores" cor="var(--pink-500)"
-      campos={CAMPOS_PESSOA}
-      onSave={(form) => {
-        upsertPessoa(form)
-        navigate('/pessoas')
-      }}
-    />
+    <form className="card animate-fade-in" onSubmit={salvar} style={{ display: 'grid', gap: 14, maxWidth: 900 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start' }}>
+        <div>
+          <h1 className="page-title">{modo === 'editar' ? 'Editar pessoa' : 'Nova pessoa'}</h1>
+          <p className="page-subtitle">Use tags customizáveis para classificar membros, voluntários, beneficiários, doadores ou outros perfis.</p>
+        </div>
+        <button type="button" className="btn btn-outline" onClick={() => navigate('/pessoas')}><ArrowLeft size={16} /> Voltar</button>
+      </div>
+
+      <div className="grid-2">
+        <label style={{ display: 'grid', gap: 6 }}>
+          <span style={{ fontSize: 13, fontWeight: 600 }}>Nome completo</span>
+          <input value={form.nome} onChange={(e) => atualizarCampo('nome', e.target.value)} placeholder="Ex.: Maria da Silva" required />
+        </label>
+        <label style={{ display: 'grid', gap: 6 }}>
+          <span style={{ fontSize: 13, fontWeight: 600 }}>E-mail</span>
+          <input type="email" value={form.email} onChange={(e) => atualizarCampo('email', e.target.value)} placeholder="nome@email.com" />
+        </label>
+      </div>
+
+      <div className="grid-4">
+        <label style={{ display: 'grid', gap: 6 }}>
+          <span style={{ fontSize: 13, fontWeight: 600 }}>Telefone</span>
+          <input value={form.telefone} onChange={(e) => atualizarCampo('telefone', e.target.value)} placeholder="(81) 99999-9999" />
+        </label>
+        <label style={{ display: 'grid', gap: 6 }}>
+          <span style={{ fontSize: 13, fontWeight: 600 }}>Status</span>
+          <select value={form.status} onChange={(e) => atualizarCampo('status', e.target.value)}>
+            <option value="ATIVO">Ativo</option>
+            <option value="INATIVO">Inativo</option>
+          </select>
+        </label>
+        <label style={{ display: 'grid', gap: 6 }}>
+          <span style={{ fontSize: 13, fontWeight: 600 }}>Horas voluntárias</span>
+          <input type="number" min="0" value={form.horas} onChange={(e) => atualizarCampo('horas', e.target.value)} />
+        </label>
+        <label style={{ display: 'grid', gap: 6 }}>
+          <span style={{ fontSize: 13, fontWeight: 600 }}>Projetos</span>
+          <input type="number" min="0" value={form.projetos} onChange={(e) => atualizarCampo('projetos', e.target.value)} />
+        </label>
+      </div>
+
+      <div className="card-sm" style={{ display: 'grid', gap: 10, background: 'var(--gray-50)' }}>
+        <strong>Tipo da pessoa</strong>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {tipos.map((tipo) => (
+            <button key={tipo} type="button" className={`btn btn-sm ${tipoSelecionado === tipo ? 'btn-primary' : 'btn-outline'}`} onClick={() => atualizarCampo('tipo', tipo)}>
+              {formatarTipoPessoa(tipo)}
+            </button>
+          ))}
+        </div>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          <input value={novoTipo} onChange={(e) => setNovoTipo(e.target.value)} placeholder="Nova tag de tipo" style={{ maxWidth: 260 }} />
+          <button type="button" className="btn btn-outline btn-sm" onClick={adicionarTipo}>Adicionar tag</button>
+        </div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          {tipos.map((tipo) => (
+            <div key={tipo} style={{ display: 'flex', alignItems: 'center', gap: 6, border: '1px solid var(--gray-200)', borderRadius: 999, padding: '6px 10px', background: '#fff' }}>
+              {editandoTipo === tipo ? (
+                <>
+                  <input value={valorEdicaoTipo} onChange={(e) => setValorEdicaoTipo(e.target.value)} style={{ width: 140, padding: '4px 8px' }} />
+                  <button type="button" className="btn btn-ghost btn-icon btn-sm" onClick={salvarEdicaoTipo}><Check size={14} /></button>
+                  <button type="button" className="btn btn-ghost btn-icon btn-sm" onClick={() => setEditandoTipo(null)}><X size={14} /></button>
+                </>
+              ) : (
+                <>
+                  <span style={{ fontSize: 12 }}>{formatarTipoPessoa(tipo)}</span>
+                  <button type="button" className="btn btn-ghost btn-icon btn-sm" onClick={() => { setEditandoTipo(tipo); setValorEdicaoTipo(tipo) }}><Save size={13} /></button>
+                  {!TIPOS_PESSOA_PADRAO.includes(tipo) && <button type="button" className="btn btn-ghost btn-icon btn-sm" onClick={() => excluirTipo(tipo)}><Trash2 size={14} /></button>}
+                </>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+        <button type="button" className="btn btn-outline" onClick={() => navigate('/pessoas')}>Cancelar</button>
+        <button type="submit" className="btn btn-primary">{modo === 'editar' ? 'Salvar alterações' : 'Cadastrar pessoa'}</button>
+      </div>
+    </form>
   )
 }
 
-export function EditarPessoaPage() {
-  const navigate = useNavigate()
-  const { id } = useParams()
-  const pessoa = useMemo(() => findPessoaById(id), [id])
+export function NovaPessoaPage() {
+  return <PessoaFormPage modo="novo" />
+}
 
-  return (
-    <CadastroEntity titulo="Editar pessoa" subtitulo="Atualize os dados da pessoa cadastrada" cor="var(--pink-500)"
-      campos={CAMPOS_PESSOA}
-      initialValues={pessoa}
-      onSave={(form) => {
-        upsertPessoa(form, id)
-        navigate('/pessoas')
-      }}
-    />
-  )
+export function EditarPessoaPage() {
+  return <PessoaFormPage modo="editar" />
 }
 
 function arquivoParaBase64(file) {
