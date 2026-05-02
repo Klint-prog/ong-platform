@@ -2,7 +2,8 @@ import { NavLink } from 'react-router-dom'
 import {
   LayoutDashboard, Users, Heart, DollarSign,
   FolderKanban, Bell, Settings, LogOut, Leaf, ScanLine,
-  Building2, FileText, HandCoins, BarChart3, UsersRound
+  Building2, FileText, HandCoins, BarChart3, UsersRound,
+  PanelLeftClose, PanelLeftOpen
 } from 'lucide-react'
 
 const NAV = [
@@ -41,29 +42,38 @@ const NAV = [
   },
 ]
 
-export default function Sidebar({ user, onLogout }) {
+export default function Sidebar({ user, onLogout, collapsed = false, onToggleCollapsed }) {
   return (
-    <aside className="app-sidebar">
-      {/* Logo */}
+    <aside className="app-sidebar" aria-label="Menu principal">
       <div className="sidebar-logo">
-        <div className="sidebar-logo-icon">
+        <div className="sidebar-logo-icon" title={collapsed ? 'ONGPlatform' : undefined}>
           <Leaf size={18} color="#fff" strokeWidth={2.5} />
         </div>
-        <div>
+        <div className="sidebar-logo-content">
           <div className="sidebar-logo-text">ONGPlatform</div>
           <div className="sidebar-logo-sub">Gestão Social</div>
         </div>
+        <button
+          className="sidebar-collapse-btn"
+          type="button"
+          title={collapsed ? 'Expandir menu' : 'Recolher menu'}
+          aria-label={collapsed ? 'Expandir menu lateral' : 'Recolher menu lateral'}
+          onClick={onToggleCollapsed}
+        >
+          {collapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
+        </button>
       </div>
 
-      {/* Navegação */}
       {NAV.map((group) => (
-        <nav key={group.section} className="sidebar-section">
+        <nav key={group.section} className="sidebar-section" aria-label={group.section}>
           <div className="sidebar-section-label">{group.section}</div>
           {group.items.map(({ to, label, icon: Icon, mod }) => (
             <NavLink
               key={to}
               to={to}
               end={to === '/'}
+              title={collapsed ? label : undefined}
+              aria-label={label}
               className={({ isActive }) =>
                 `nav-item ${mod} ${isActive ? 'active' : ''}`
               }
@@ -71,19 +81,18 @@ export default function Sidebar({ user, onLogout }) {
               <span className="nav-icon">
                 <Icon size={15} strokeWidth={2} color="#fff" />
               </span>
-              {label}
+              <span className="nav-label">{label}</span>
             </NavLink>
           ))}
         </nav>
       ))}
 
-      {/* Usuário logado */}
       <div className="sidebar-user">
-        <div className="sidebar-avatar">
+        <div className="sidebar-avatar" title={collapsed ? (user?.nome ?? 'Administrador') : undefined}>
           {user?.nome?.charAt(0) ?? 'A'}
         </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div className="sidebar-user-name" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <div className="sidebar-user-content">
+          <div className="sidebar-user-name">
             {user?.nome ?? 'Administrador'}
           </div>
           <div className="sidebar-user-role">
@@ -91,8 +100,7 @@ export default function Sidebar({ user, onLogout }) {
           </div>
         </div>
         <button
-          className="btn btn-ghost btn-icon"
-          style={{ color: 'rgba(255,255,255,.35)', padding: 6 }}
+          className="btn btn-ghost btn-icon sidebar-logout-btn"
           title="Sair"
           onClick={onLogout}
         >
