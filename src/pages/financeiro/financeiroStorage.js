@@ -1,5 +1,6 @@
 const CONTAS_KEY = 'ong_financeiro_contas'
 const ORCAMENTOS_KEY = 'ong_financeiro_orcamentos'
+const TRANSACOES_KEY = 'ong_financeiro_transacoes'
 
 function gerarId(prefixo = 'item') {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -25,8 +26,57 @@ function salvarArray(key, items) {
   return normalized
 }
 
+function normalizarTexto(value) {
+  return String(value || '').trim().toLowerCase()
+}
+
+function transacaoMovimentaSaldo(transacao) {
+  if (transacao.tipo === 'RECEITA') {
+    return transacao.status === 'RECEBIDA'
+  }
+
+  if (transacao.tipo === 'DESPESA') {
+    return transacao.status === 'PAGA'
+  }
+
+  return false
+}
+
+function calcularResumoConta(conta, transacoes = []) {
+  const contaNome = normalizarTexto(conta.nome)
+  const vinculadas = transacoes.filter((transacao) => normalizarTexto(transacao.conta) === contaNome)
+  const movimentadas = vinculadas.filter(transacaoMovimentaSaldo)
+
+  const entradas = movimentadas
+    .filter((transacao) => transacao.tipo === 'RECEITA')
+    .reduce((total, transacao) => total + Number(transacao.valor || 0), 0)
+
+  const saidas = movimentadas
+    .filter((transacao) => transacao.tipo === 'DESPESA')
+    .reduce((total, transacao) => total + Number(transacao.valor || 0), 0)
+
+  const saldoInicial = Number(conta.saldoInicial || 0)
+
+  return {
+    totalReceitas: entradas,
+    totalDespesas: saidas,
+    saldoMovimentado: entradas - saidas,
+    saldoAtual: saldoInicial + entradas - saidas,
+    quantidadeLancamentos: vinculadas.length,
+    quantidadeLancamentosEfetivados: movimentadas.length,
+  }
+}
+
+function aplicarSaldosCalculados(contas) {
+  const transacoes = lerArray(TRANSACOES_KEY)
+  return contas.map((conta) => ({
+    ...conta,
+    ...calcularResumoConta(conta, transacoes),
+  }))
+}
+
 export function listContasStorage() {
-  return lerArray(CONTAS_KEY)
+  return aplicarSaldosCalculados(lerArray(CONTAS_KEY))
 }
 
 export function saveContasStorage(contas) {
@@ -35,15 +85,17 @@ export function saveContasStorage(contas) {
 
 export function addContaStorage(conta) {
   const nextItem = { id: conta.id || gerarId('conta'), ...conta }
-  const next = [nextItem, ...listContasStorage().filter((item) => String(item.id) !== String(nextItem.id))]
+  const current = lerArray(CONTAS_KEY)
+  const next = [nextItem, ...current.filter((item) => String(item.id) !== String(nextItem.id))]
   saveContasStorage(next)
   return nextItem
 }
 
 export function deleteContaStorage(id) {
-  const next = listContasStorage().filter((item) => String(item.id) !== String(id))
+  const current = lerArray(CONTAS_KEY)
+  const next = current.filter((item) => String(item.id) !== String(id))
   saveContasStorage(next)
-  return next
+  return aplicarSaldosCalculados(next)
 }
 
 export function listOrcamentosStorage() {
