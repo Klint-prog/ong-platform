@@ -40,6 +40,10 @@ const statusConfig = {
   VENCE_EM_BREVE: { label: 'Vence em breve', badge: 'badge-red', icon: AlertTriangle },
 }
 
+// VENCE_EM_BREVE é calculado automaticamente pelo campo validade — não deve
+// aparecer como opção manual nos formulários de upload e edição.
+const statusEditaveis = Object.entries(statusConfig).filter(([key]) => key !== 'VENCE_EM_BREVE')
+
 const moduloLabels = {
   GERAL: 'Geral',
   INSTITUCIONAL: 'Institucional',
@@ -167,6 +171,8 @@ export default function Documentos() {
     if (!window.confirm(`Excluir a pasta "${pasta.nome}" e todos os documentos dentro dela?`)) return
     excluirPasta(pasta.id)
     if (String(folderAtual) === String(pasta.id)) setFolderAtual(pasta.parentId || 'root')
+    // Fecha o preview se o documento aberto estava dentro da pasta excluída (cascade)
+    setPreviewDoc((atual) => atual && String(atual.folderId) === String(pasta.id) ? null : atual)
     recarregar()
   }
 
@@ -210,13 +216,17 @@ export default function Documentos() {
 
   const salvarEdicaoDoc = () => {
     if (!editandoDoc?.nome?.trim()) return
-    atualizarDocumento({ ...editandoDoc, tags: Array.isArray(editandoDoc.tags) ? editandoDoc.tags : [] })
+    const atualizado = { ...editandoDoc, tags: Array.isArray(editandoDoc.tags) ? editandoDoc.tags : [] }
+    atualizarDocumento(atualizado)
+    setPreviewDoc((atual) => atual?.id === atualizado.id ? { ...atual, ...atualizado } : atual)
     setEditandoDoc(null)
     recarregar()
   }
 
   const validarDocumento = (doc) => {
-    atualizarDocumento({ ...doc, status: 'VALIDADO', validadoPor: 'Admin', validadoEm: new Date().toISOString() })
+    const atualizado = { ...doc, status: 'VALIDADO', validadoPor: 'Admin', validadoEm: new Date().toISOString() }
+    atualizarDocumento(atualizado)
+    setPreviewDoc((atual) => atual?.id === doc.id ? atualizado : atual)
     recarregar()
   }
 
@@ -363,7 +373,7 @@ export default function Documentos() {
             <input type="date" value={formUpload.validade} onChange={(e) => setFormUpload((f) => ({ ...f, validade: e.target.value }))} />
           </div>
           <input placeholder="Tags separadas por vírgula" value={formUpload.tags} onChange={(e) => setFormUpload((f) => ({ ...f, tags: e.target.value }))} />
-          <select value={formUpload.status} onChange={(e) => setFormUpload((f) => ({ ...f, status: e.target.value }))}>{Object.entries(statusConfig).map(([value, cfg]) => <option key={value} value={value}>{cfg.label}</option>)}</select>
+          <select value={formUpload.status} onChange={(e) => setFormUpload((f) => ({ ...f, status: e.target.value }))}>{statusEditaveis.map(([value, cfg]) => <option key={value} value={value}>{cfg.label}</option>)}</select>
           <label className="btn btn-primary" style={{ width: 'fit-content', cursor: 'pointer' }}><Upload size={15} /> Selecionar arquivos<input ref={fileInputRef} type="file" multiple style={{ display: 'none' }} onChange={(e) => uploadArquivos(e.target.files)} /></label>
         </Modal>
       )}
@@ -379,7 +389,7 @@ export default function Documentos() {
           </div>
           <div className="grid-2"><input value={editandoDoc.projeto || ''} onChange={(e) => setEditandoDoc((doc) => ({ ...doc, projeto: e.target.value }))} placeholder="Projeto ou vínculo" /><input type="date" value={editandoDoc.validade || ''} onChange={(e) => setEditandoDoc((doc) => ({ ...doc, validade: e.target.value }))} /></div>
           <input value={(editandoDoc.tags || []).join(', ')} onChange={(e) => setEditandoDoc((doc) => ({ ...doc, tags: e.target.value.split(',').map((tag) => tag.trim()).filter(Boolean) }))} placeholder="Tags" />
-          <select value={editandoDoc.status || 'PENDENTE_REVISAO'} onChange={(e) => setEditandoDoc((doc) => ({ ...doc, status: e.target.value }))}>{Object.entries(statusConfig).map(([value, cfg]) => <option key={value} value={value}>{cfg.label}</option>)}</select>
+          <select value={editandoDoc.status || 'PENDENTE_REVISAO'} onChange={(e) => setEditandoDoc((doc) => ({ ...doc, status: e.target.value }))}>{statusEditaveis.map(([value, cfg]) => <option key={value} value={value}>{cfg.label}</option>)}</select>
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}><button className="btn btn-outline" onClick={() => setEditandoDoc(null)}>Cancelar</button><button className="btn btn-primary" onClick={salvarEdicaoDoc}>Salvar</button></div>
         </Modal>
       )}
