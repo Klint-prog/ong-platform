@@ -9,6 +9,7 @@ import { hydratePostgresLocalStorage, installPostgresLocalStorage } from './serv
 import './pages/financeiro/orcamentoTipoPatch.js'
 import './pages/financeiro/contaTagsPatch.js'
 import './pages/financeiro/financeiroActionsPatch.js'
+import './pages/documentos/documentosModalPatch.js'
 import App from './App.jsx'
 
 async function bootstrap() {
