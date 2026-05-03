@@ -65,7 +65,21 @@ export function excluirPasta(id) {
 
 export function listarDocumentos() {
   if (typeof localStorage === 'undefined') return []
-  return safeParseArray(localStorage.getItem(DOCS_KEY), [])
+  const docs = safeParseArray(localStorage.getItem(DOCS_KEY), [])
+  const hoje = new Date()
+  hoje.setHours(0, 0, 0, 0)
+  const em30Dias = new Date(hoje)
+  em30Dias.setDate(em30Dias.getDate() + 30)
+
+  return docs.map((doc) => {
+    // Documentos já validados ou sem validade não são afetados
+    if (doc.status === 'VALIDADO' || !doc.validade) return doc
+    const vencimento = new Date(doc.validade)
+    if (!Number.isNaN(vencimento.getTime()) && vencimento <= em30Dias) {
+      return { ...doc, status: 'VENCE_EM_BREVE' }
+    }
+    return doc
+  })
 }
 
 export function salvarDocumentos(documentos) {
