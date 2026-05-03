@@ -67,7 +67,10 @@ function salvarArray(items) {
 function recarregarFinanceiroAposValidacao() {
   if (typeof window === 'undefined') return
   if (!window.location.pathname.startsWith('/financeiro')) return
-  setTimeout(() => window.location.reload(), 120)
+  // O flush para o PostgreSQL usa 120ms. O reload precisa esperar o flush
+  // completar antes de recarregar a página, caso contrário a hidratação
+  // busca os dados antigos do banco e a validação parece não ter efeito.
+  setTimeout(() => window.location.reload(), 800)
 }
 
 function sincronizarRemocaoTransacoes(transacaoId) {
