@@ -1,0 +1,13 @@
+const DEFAULT_LOGO = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NDAgMzAwIj4KICA8cmVjdCB3aWR0aD0iNjQwIiBoZWlnaHQ9IjMwMCIgZmlsbD0id2hpdGUiLz4KICA8dGV4dCB4PSIzMjAiIHk9IjExMiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1mYW1pbHk9Ikdlb3JnaWEsIHNlcmlmIiBmb250LXNpemU9IjkyIiBmb250LXN0eWxlPSJpdGFsaWMiIGZpbGw9IiMzNzQxNTEiPkFWPC90ZXh0PgogIDxsaW5lIHgxPSI0MCIgeTE9IjE1NCIgeDI9IjYwMCIgeTI9IjE1NCIgc3Ryb2tlPSIjMTExODI3IiBzdHJva2Utd2lkdGg9IjUiLz4KICA8dGV4dCB4PSIzMjAiIHk9IjIxNSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjQ0IiBmb250LXdlaWdodD0iNzAwIiBmaWxsPSIjNGI1NTYzIj5BViBBc3NvY2lhw6fDo28gVmFkYWk8L3RleHQ+CiAgPHRleHQgeD0iMzIwIiB5PSIyNTgiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIyOCIgZm9udC13ZWlnaHQ9IjcwMCIgZmlsbD0iIzRiNTU2MyI+Q2FyaWRhZGUgcXVlIG1vdGl2YTwvdGV4dD4KPC9zdmc+'
+
+export function getLogoInstitucional() {
+  if (typeof window === 'undefined') return DEFAULT_LOGO
+  try {
+    const dados = JSON.parse(window.localStorage.getItem('ong:institucional') || '{}')
+    return dados.logoUrl || DEFAULT_LOGO
+  } catch {
+    return DEFAULT_LOGO
+  }
+}
+
+export const AV_VADAI_LOGO_DATA_URL = DEFAULT_LOGO

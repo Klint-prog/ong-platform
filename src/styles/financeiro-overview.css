@@ -1,0 +1,12 @@
+/* ================================================================
+   Financeiro — ajustes da visão geral
+   ================================================================ */
+
+/*
+  Na visão geral, a lista de últimas movimentações é apenas consultiva.
+  A exclusão operacional deve ser feita nas abas Receitas, Despesas,
+  Contas, Orçamentos ou Comprovantes.
+*/
+.mod-financeiro .card.animate-fade-up.delay-3:first-of-type td:last-child .btn-outline:last-child {
+  display: none !important;
+}
