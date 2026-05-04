@@ -10,6 +10,7 @@ import './pages/financeiro/orcamentoTipoPatch.js'
 import './pages/financeiro/contaTagsPatch.js'
 import './pages/financeiro/financeiroActionsPatch.js'
 import './pages/documentos/documentosModalPatch.js'
+import './pages/documentos/documentosLibreOfficePatch.js'
 import App from './App.jsx'
 
 async function bootstrap() {
