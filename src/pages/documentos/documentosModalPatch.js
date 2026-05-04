@@ -1,11 +1,10 @@
 /* ================================================================
-   Central de Documentos — correção do modal e nova aba
+   Central de Documentos — correção visual segura do modal
    ================================================================
 
-   Corrige dois pontos do preview:
-   - o modal maximizado não pode estourar para a direita nem esconder o X;
-   - abrir em nova aba não deve disparar popup/alerta falso quando o browser
-     bloquear window.open. Usamos link/âncora com target=_blank no clique.
+   Importante: este patch NÃO move o modal para fora da árvore React.
+   Mover o elemento para document.body quebra os eventos do React e faz botões
+   como Maximizar, Validar, Excluir e Editar pararem de responder.
 */
 
 function localizarModalPreviewDocumentos() {
@@ -20,11 +19,7 @@ function localizarModalPreviewDocumentos() {
   return { overlay, card }
 }
 
-function modalEstaAberto() {
-  return Boolean(localizarModalPreviewDocumentos())
-}
-
-function abrirPreviewEmNovaAbaSemPopup() {
+function abrirPreviewEmNovaAba() {
   const modal = localizarModalPreviewDocumentos()
   if (!modal) return
 
@@ -42,10 +37,14 @@ function abrirPreviewEmNovaAbaSemPopup() {
   link.remove()
 }
 
-function interceptarBotoesNovaAba(event) {
+function interceptarSomenteNovaAba(event) {
   if (!window.location.pathname.startsWith('/documentos')) return
+
+  const modal = localizarModalPreviewDocumentos()
+  if (!modal) return
+
   const button = event.target?.closest?.('button')
-  if (!button || !modalEstaAberto()) return
+  if (!button || !modal.card.contains(button)) return
 
   const texto = String(button.textContent || '').trim().toLowerCase()
   const ehNovaAba = texto === 'nova aba' || texto === 'abrir em nova aba'
@@ -53,8 +52,7 @@ function interceptarBotoesNovaAba(event) {
 
   event.preventDefault()
   event.stopPropagation()
-  event.stopImmediatePropagation?.()
-  abrirPreviewEmNovaAbaSemPopup()
+  abrirPreviewEmNovaAba()
 }
 
 function aplicarCorrecaoModalDocumentos() {
@@ -63,21 +61,11 @@ function aplicarCorrecaoModalDocumentos() {
   const modal = localizarModalPreviewDocumentos()
   if (!modal) return
 
-  let { overlay, card } = modal
-
-  // Garante que o fixed seja relativo ao viewport real, e não ao container
-  // interno da aplicação. Isso resolve o deslocamento para a direita quando
-  // a tela tem sidebar/topbar e o usuário maximiza o modal.
-  if (overlay.parentElement !== document.body) {
-    document.body.appendChild(overlay)
-    const novoModal = localizarModalPreviewDocumentos()
-    overlay = novoModal?.overlay || overlay
-    card = novoModal?.card || card
-  }
-
+  const { overlay, card } = modal
   const botaoMax = Array.from(card.querySelectorAll('button')).find((button) => ['Maximizar', 'Restaurar'].includes(String(button.textContent || '').trim()))
   const maximizado = String(botaoMax?.textContent || '').trim() === 'Restaurar'
 
+  // Mantém o modal dentro do React, mas força limites seguros de viewport.
   overlay.style.position = 'fixed'
   overlay.style.inset = '0'
   overlay.style.boxSizing = 'border-box'
@@ -86,7 +74,7 @@ function aplicarCorrecaoModalDocumentos() {
   overlay.style.maxWidth = '100vw'
   overlay.style.maxHeight = '100vh'
   overlay.style.overflow = 'hidden'
-  overlay.style.padding = maximizado ? '14px' : '24px'
+  overlay.style.padding = maximizado ? '12px' : '24px'
   overlay.style.display = 'flex'
   overlay.style.alignItems = 'center'
   overlay.style.justifyContent = 'center'
@@ -102,10 +90,10 @@ function aplicarCorrecaoModalDocumentos() {
   card.style.transform = 'none'
   card.style.minWidth = '0'
   card.style.minHeight = '0'
-  card.style.maxWidth = maximizado ? 'calc(100vw - 28px)' : 'calc(100vw - 48px)'
-  card.style.width = maximizado ? 'calc(100vw - 28px)' : 'min(1380px, calc(100vw - 48px))'
-  card.style.height = maximizado ? 'calc(100vh - 28px)' : 'min(86vh, calc(100vh - 48px))'
-  card.style.maxHeight = maximizado ? 'calc(100vh - 28px)' : 'calc(100vh - 48px)'
+  card.style.maxWidth = maximizado ? 'calc(100vw - 24px)' : 'calc(100vw - 48px)'
+  card.style.width = maximizado ? 'calc(100vw - 24px)' : 'min(1380px, calc(100vw - 48px))'
+  card.style.height = maximizado ? 'calc(100vh - 24px)' : 'min(86vh, calc(100vh - 48px))'
+  card.style.maxHeight = maximizado ? 'calc(100vh - 24px)' : 'calc(100vh - 48px)'
   card.style.overflow = 'hidden'
   card.style.resize = maximizado ? 'none' : 'both'
 
@@ -120,11 +108,12 @@ function aplicarCorrecaoModalDocumentos() {
     header.style.minWidth = '0'
   }
 
-  const closeButton = Array.from(card.querySelectorAll('button')).find((button) => button.querySelector('svg') && !String(button.textContent || '').trim())
-  if (closeButton) {
-    closeButton.style.flex = '0 0 auto'
-    closeButton.style.position = 'relative'
-    closeButton.style.zIndex = '20'
+  const headerActions = header?.lastElementChild
+  if (headerActions) {
+    headerActions.style.flex = '0 0 auto'
+    headerActions.style.minWidth = 'fit-content'
+    headerActions.style.position = 'relative'
+    headerActions.style.zIndex = '20'
   }
 
   const contentGrid = Array.from(card.querySelectorAll('div')).find((div) => String(div.style.gridTemplateColumns || '').includes('minmax'))
@@ -147,7 +136,7 @@ function aplicarCorrecaoModalDocumentos() {
 if (typeof window !== 'undefined') {
   const observer = new MutationObserver(aplicarCorrecaoModalDocumentos)
   observer.observe(document.documentElement, { childList: true, subtree: true, attributes: true })
-  document.addEventListener('click', interceptarBotoesNovaAba, true)
+  document.addEventListener('click', interceptarSomenteNovaAba, true)
   window.addEventListener('resize', aplicarCorrecaoModalDocumentos)
   window.addEventListener('popstate', aplicarCorrecaoModalDocumentos)
   setInterval(aplicarCorrecaoModalDocumentos, 400)
