@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   AlertTriangle,
   CheckCircle2,
@@ -22,16 +22,7 @@ import {
   Upload,
   X,
 } from 'lucide-react'
-import {
-  adicionarDocumento,
-  atualizarDocumento,
-  criarPasta,
-  excluirDocumentoStorage,
-  excluirPasta,
-  listarDocumentos,
-  listarPastas,
-  moverDocumentoStorage,
-} from './documentosStorage'
+import { criarPasta, excluirPasta, listarPastas } from './documentosStorage'
 
 const statusConfig = {
   ATUALIZADO: { label: 'Atualizado', badge: 'badge-green', icon: CheckCircle2 },
@@ -40,8 +31,6 @@ const statusConfig = {
   VENCE_EM_BREVE: { label: 'Vence em breve', badge: 'badge-red', icon: AlertTriangle },
 }
 
-// VENCE_EM_BREVE é calculado automaticamente pelo campo validade — não deve
-// aparecer como opção manual nos formulários de upload e edição.
 const statusEditaveis = Object.entries(statusConfig).filter(([key]) => key !== 'VENCE_EM_BREVE')
 
 const moduloLabels = {
@@ -54,6 +43,7 @@ const moduloLabels = {
 }
 
 const categorias = ['Documento', 'Comprovante', 'Contrato', 'Ata', 'Certidão', 'Recibo', 'Ofício', 'Prestação de contas', 'Termo LGPD', 'Dossiê']
+const formatosAceitos = '.pdf,.png,.jpg,.jpeg,.webp,.gif,.zip,.rar,.odt,.ott,.ods,.ots,.odp,.otp,.odg,.odf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.rtf'
 
 function formatBytes(bytes = 0) {
   if (!bytes) return '0 B'
@@ -62,49 +52,10 @@ function formatBytes(bytes = 0) {
   return `${(bytes / Math.pow(1024, index)).toFixed(index === 0 ? 0 : 1)} ${units[index]}`
 }
 
-function arquivoParaBase64(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => resolve(reader.result)
-    reader.onerror = reject
-    reader.readAsDataURL(file)
-  })
-}
-
 function getFileIcon(doc) {
   if (doc.mimeType?.startsWith('image/')) return FileImage
   if (doc.mimeType?.includes('zip') || doc.mimeType?.includes('rar')) return FileArchive
   return FileText
-}
-
-function dataURLtoBlob(dataUrl) {
-  const [header, base64] = dataUrl.split(',')
-  const mime = header.match(/:(.*?);/)?.[1] || 'application/octet-stream'
-  const binary = atob(base64 || '')
-  const bytes = new Uint8Array(binary.length)
-  for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i)
-  return new Blob([bytes], { type: mime })
-}
-
-function baixarBlob(nome, conteudo, mime = 'application/json') {
-  const blob = conteudo?.startsWith?.('data:') ? dataURLtoBlob(conteudo) : new Blob([conteudo], { type: mime })
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = nome
-  document.body.appendChild(link)
-  link.click()
-  link.remove()
-  URL.revokeObjectURL(url)
-}
-
-function abrirConteudoNovaAba(doc) {
-  if (!doc?.conteudo) return
-  const blob = dataURLtoBlob(doc.conteudo)
-  const url = URL.createObjectURL(blob)
-  const win = window.open(url, '_blank', 'noopener,noreferrer')
-  if (!win) window.alert('O navegador bloqueou a nova aba. Libere pop-ups para esta página.')
-  setTimeout(() => URL.revokeObjectURL(url), 60_000)
 }
 
 function getBreadcrumbs(pastas, folderId) {
@@ -118,9 +69,63 @@ function getBreadcrumbs(pastas, folderId) {
   return caminho
 }
 
+async function requestJson(url, options = {}) {
+  const response = await fetch(url, options)
+  if (!response.ok) {
+    let message = 'Falha na comunicação com o servidor.'
+    try {
+      const body = await response.json()
+      message = body.error || message
+    } catch {
+      message = await response.text().catch(() => message)
+    }
+    throw new Error(message)
+  }
+  return response.json()
+}
+
+async function listarDocumentosApi() {
+  return requestJson('/api/documentos')
+}
+
+async function uploadDocumentoApi(file, metadados) {
+  const formData = new FormData()
+  formData.append('arquivo', file)
+  formData.append('nome', file.name)
+  formData.append('mimeType', file.type || 'application/octet-stream')
+  formData.append('tamanho', String(file.size))
+  formData.append('folderId', metadados.folderId || 'root')
+  formData.append('modulo', metadados.modulo || 'GERAL')
+  formData.append('categoria', metadados.categoria || 'Documento')
+  formData.append('projeto', metadados.projeto || '')
+  formData.append('validade', metadados.validade || '')
+  formData.append('status', metadados.status || 'PENDENTE_REVISAO')
+  formData.append('tags', JSON.stringify(metadados.tags || []))
+
+  return requestJson('/api/documentos/upload', { method: 'POST', body: formData })
+}
+
+async function atualizarDocumentoApi(doc) {
+  return requestJson(`/api/documentos/${encodeURIComponent(doc.id)}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(doc),
+  })
+}
+
+async function excluirDocumentoApi(id) {
+  return requestJson(`/api/documentos/${encodeURIComponent(id)}`, { method: 'DELETE' })
+}
+
+function abrirUrlNovaAba(url) {
+  if (!url) return
+  const win = window.open(url, '_blank', 'noopener,noreferrer')
+  if (!win) window.alert('O navegador bloqueou a nova aba. Libere pop-ups para esta página.')
+}
+
 export default function Documentos() {
   const [pastas, setPastas] = useState(() => listarPastas())
-  const [docs, setDocs] = useState(() => listarDocumentos())
+  const [docs, setDocs] = useState([])
   const [folderAtual, setFolderAtual] = useState('root')
   const [busca, setBusca] = useState('')
   const [modoVisual, setModoVisual] = useState('lista')
@@ -130,6 +135,8 @@ export default function Documentos() {
   const [editandoDoc, setEditandoDoc] = useState(null)
   const [novoNomePasta, setNovoNomePasta] = useState('')
   const [menuPasta, setMenuPasta] = useState(false)
+  const [carregando, setCarregando] = useState(true)
+  const [erro, setErro] = useState('')
   const [formUpload, setFormUpload] = useState({ modulo: 'GERAL', categoria: 'Documento', projeto: '', validade: '', tags: '', status: 'PENDENTE_REVISAO' })
   const fileInputRef = useRef(null)
 
@@ -141,16 +148,28 @@ export default function Documentos() {
   const resultados = useMemo(() => {
     const termo = busca.trim().toLowerCase()
     const baseDocs = termo ? docs : documentosDaPasta
-    return baseDocs.filter((doc) => [doc.nome, doc.categoria, doc.modulo, doc.projeto, ...(doc.tags || [])].join(' ').toLowerCase().includes(termo))
+    return baseDocs.filter((doc) => [doc.nome, doc.nomeOriginal, doc.categoria, doc.modulo, doc.projeto, ...(doc.tags || [])].join(' ').toLowerCase().includes(termo))
   }, [busca, docs, documentosDaPasta])
 
   const totalPendencias = docs.filter((doc) => ['PENDENTE_REVISAO', 'VENCE_EM_BREVE'].includes(doc.status)).length
   const totalValidados = docs.filter((doc) => doc.status === 'VALIDADO').length
 
-  const recarregar = () => {
+  const recarregar = async () => {
     setPastas(listarPastas())
-    setDocs(listarDocumentos())
+    setErro('')
+    try {
+      const data = await listarDocumentosApi()
+      setDocs(Array.isArray(data) ? data : [])
+    } catch (error) {
+      setErro(error.message || 'Não foi possível carregar os documentos.')
+    } finally {
+      setCarregando(false)
+    }
   }
+
+  useEffect(() => {
+    recarregar()
+  }, [])
 
   const abrirPreview = (doc) => {
     setPreviewDoc(doc)
@@ -163,77 +182,99 @@ export default function Documentos() {
     criarPasta({ nome, parentId: folderAtual, modulo: pastaAtual?.modulo || 'GERAL' })
     setNovoNomePasta('')
     setMenuPasta(false)
-    recarregar()
+    setPastas(listarPastas())
   }
 
-  const excluirPastaAtual = (pasta) => {
+  const excluirPastaAtual = async (pasta) => {
     if (pasta.sistema) return window.alert('Pastas padrão do sistema não podem ser excluídas.')
-    if (!window.confirm(`Excluir a pasta "${pasta.nome}" e todos os documentos dentro dela?`)) return
+    if (!window.confirm(`Excluir a pasta "${pasta.nome}"? Os documentos não serão apagados; eles serão mantidos no banco até serem movidos ou excluídos.`)) return
     excluirPasta(pasta.id)
     if (String(folderAtual) === String(pasta.id)) setFolderAtual(pasta.parentId || 'root')
-    // Fecha o preview se o documento aberto estava dentro da pasta excluída (cascade)
     setPreviewDoc((atual) => atual && String(atual.folderId) === String(pasta.id) ? null : atual)
-    recarregar()
+    setPastas(listarPastas())
   }
 
   const uploadArquivos = async (files) => {
     const lista = Array.from(files || [])
     if (!lista.length) return
+    setErro('')
+
     const tags = formUpload.tags.split(',').map((tag) => tag.trim()).filter(Boolean)
-    for (const file of lista) {
-      const conteudo = await arquivoParaBase64(file)
-      adicionarDocumento({
-        nome: file.name,
-        nomeOriginal: file.name,
-        mimeType: file.type,
-        tamanho: file.size,
-        conteudo,
-        folderId: folderAtual,
-        modulo: formUpload.modulo,
-        categoria: formUpload.categoria,
-        projeto: formUpload.projeto,
-        validade: formUpload.validade,
-        tags,
-        status: formUpload.status,
-      })
+    try {
+      for (const file of lista) {
+        await uploadDocumentoApi(file, {
+          folderId: folderAtual,
+          modulo: formUpload.modulo,
+          categoria: formUpload.categoria,
+          projeto: formUpload.projeto,
+          validade: formUpload.validade,
+          tags,
+          status: formUpload.status,
+        })
+      }
+      setUploadAberto(false)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+      await recarregar()
+    } catch (error) {
+      setErro(error.message || 'Falha ao enviar documento.')
     }
-    setUploadAberto(false)
-    if (fileInputRef.current) fileInputRef.current.value = ''
-    recarregar()
   }
 
   const baixarDocumento = (doc) => {
-    if (doc.conteudo) return baixarBlob(doc.nome, doc.conteudo, doc.mimeType)
-    baixarBlob(`${doc.nome || 'documento'}.json`, JSON.stringify(doc, null, 2), 'application/json')
+    if (!doc?.url) return
+    const link = document.createElement('a')
+    link.href = doc.url
+    link.download = doc.nomeOriginal || doc.nome || 'documento'
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
   }
 
-  const excluirDocumento = (doc) => {
+  const excluirDocumento = async (doc) => {
     if (!window.confirm(`Excluir o documento "${doc.nome}"?`)) return
-    excluirDocumentoStorage(doc.id)
-    setPreviewDoc(null)
-    recarregar()
+    setErro('')
+    try {
+      await excluirDocumentoApi(doc.id)
+      setPreviewDoc(null)
+      await recarregar()
+    } catch (error) {
+      setErro(error.message || 'Falha ao excluir documento.')
+    }
   }
 
-  const salvarEdicaoDoc = () => {
+  const salvarEdicaoDoc = async () => {
     if (!editandoDoc?.nome?.trim()) return
-    const atualizado = { ...editandoDoc, tags: Array.isArray(editandoDoc.tags) ? editandoDoc.tags : [] }
-    atualizarDocumento(atualizado)
-    setPreviewDoc((atual) => atual?.id === atualizado.id ? { ...atual, ...atualizado } : atual)
-    setEditandoDoc(null)
-    recarregar()
+    setErro('')
+    try {
+      const atualizado = await atualizarDocumentoApi({ ...editandoDoc, tags: Array.isArray(editandoDoc.tags) ? editandoDoc.tags : [] })
+      setPreviewDoc((atual) => atual?.id === atualizado.id ? atualizado : atual)
+      setEditandoDoc(null)
+      await recarregar()
+    } catch (error) {
+      setErro(error.message || 'Falha ao salvar metadados.')
+    }
   }
 
-  const validarDocumento = (doc) => {
-    const atualizado = { ...doc, status: 'VALIDADO', validadoPor: 'Admin', validadoEm: new Date().toISOString() }
-    atualizarDocumento(atualizado)
-    setPreviewDoc((atual) => atual?.id === doc.id ? atualizado : atual)
-    recarregar()
+  const validarDocumento = async (doc) => {
+    setErro('')
+    try {
+      const atualizado = await atualizarDocumentoApi({ id: doc.id, status: 'VALIDADO' })
+      setPreviewDoc((atual) => atual?.id === doc.id ? atualizado : atual)
+      await recarregar()
+    } catch (error) {
+      setErro(error.message || 'Falha ao validar documento.')
+    }
   }
 
-  const moverDocumento = (doc, targetFolder) => {
-    moverDocumentoStorage(doc.id, targetFolder)
-    setPreviewDoc((atual) => atual?.id === doc.id ? { ...atual, folderId: targetFolder } : atual)
-    recarregar()
+  const moverDocumento = async (doc, targetFolder) => {
+    setErro('')
+    try {
+      const atualizado = await atualizarDocumentoApi({ id: doc.id, folderId: targetFolder })
+      setPreviewDoc((atual) => atual?.id === doc.id ? atualizado : atual)
+      await recarregar()
+    } catch (error) {
+      setErro(error.message || 'Falha ao mover documento.')
+    }
   }
 
   const renderDocCard = (doc) => {
@@ -255,6 +296,7 @@ export default function Documentos() {
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           <span className={`badge ${cfg.badge}`}><StatusIcon size={11} /> {cfg.label}</span>
           {doc.modulo && <span className="badge badge-gray">{moduloLabels[doc.modulo] || doc.modulo}</span>}
+          {doc.libreOfficePreview && <span className="badge badge-blue">Preview PDF</span>}
         </div>
       </div>
     )
@@ -265,7 +307,7 @@ export default function Documentos() {
       <div className="page-header">
         <div>
           <h1 className="page-title">Central de Documentos</h1>
-          <p className="page-subtitle">Gestão de arquivos estilo File Browser, com pastas, metadados, vínculos e validação.</p>
+          <p className="page-subtitle">Gestão de arquivos em volume persistente, sem Base64, com pastas, metadados, vínculos e validação.</p>
         </div>
         <div style={{ display: 'flex', gap: 8, position: 'relative' }}>
           <button className="btn btn-outline" onClick={() => setMenuPasta((v) => !v)}><FolderOpen size={16} /> Nova pasta</button>
@@ -279,6 +321,8 @@ export default function Documentos() {
           )}
         </div>
       </div>
+
+      {erro && <div className="card" style={{ marginBottom: 16, borderColor: 'var(--red-200)', color: 'var(--red-600)' }}>{erro}</div>}
 
       <div className="grid-4" style={{ marginBottom: 20 }}>
         <div className="stat-card mod-documentos"><div className="stat-icon"><FileText size={20} /></div><div><div className="stat-label">Documentos</div><div className="stat-value">{docs.length}</div></div></div>
@@ -330,7 +374,9 @@ export default function Documentos() {
             </div>
           </div>
 
-          {modoVisual === 'grade' ? (
+          {carregando ? (
+            <EmptyState texto="Carregando documentos…" />
+          ) : modoVisual === 'grade' ? (
             <div className="grid-3">{resultados.map(renderDocCard)}{resultados.length === 0 && <EmptyState texto="Nenhum documento encontrado." />}</div>
           ) : (
             <div className="card">
@@ -374,7 +420,8 @@ export default function Documentos() {
           </div>
           <input placeholder="Tags separadas por vírgula" value={formUpload.tags} onChange={(e) => setFormUpload((f) => ({ ...f, tags: e.target.value }))} />
           <select value={formUpload.status} onChange={(e) => setFormUpload((f) => ({ ...f, status: e.target.value }))}>{statusEditaveis.map(([value, cfg]) => <option key={value} value={value}>{cfg.label}</option>)}</select>
-          <label className="btn btn-primary" style={{ width: 'fit-content', cursor: 'pointer' }}><Upload size={15} /> Selecionar arquivos<input ref={fileInputRef} type="file" multiple style={{ display: 'none' }} onChange={(e) => uploadArquivos(e.target.files)} /></label>
+          <label className="btn btn-primary" style={{ width: 'fit-content', cursor: 'pointer' }}><Upload size={15} /> Selecionar arquivos<input ref={fileInputRef} type="file" multiple accept={formatosAceitos} style={{ display: 'none' }} onChange={(e) => uploadArquivos(e.target.files)} /></label>
+          <span style={{ fontSize: 12, color: 'var(--gray-400)' }}>Os arquivos agora são enviados por multipart/form-data e ficam no volume persistente do backend, não em Base64.</span>
         </Modal>
       )}
 
@@ -398,7 +445,12 @@ export default function Documentos() {
 }
 
 function DocActions({ doc, onPreview, onEdit, onDownload, onDelete, onValidate }) {
-  return <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}><button className="btn btn-sm btn-outline" onClick={() => onPreview(doc)}><Eye size={13} /> Ver</button><button className="btn btn-sm btn-outline" onClick={() => onEdit(doc)}><Pencil size={13} /> Editar</button>{doc.status !== 'VALIDADO' && <button className="btn btn-sm btn-outline" onClick={() => onValidate(doc)}><ShieldCheck size={13} /> Validar</button>}<button className="btn btn-sm btn-outline" onClick={() => onDownload(doc)}><Download size={13} /> Baixar</button><button className="btn btn-sm btn-outline" onClick={() => onDelete(doc)}><Trash2 size={13} /> Excluir</button></div>
+  const stop = (event, callback) => {
+    event.stopPropagation()
+    callback()
+  }
+
+  return <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}><button className="btn btn-sm btn-outline" onClick={(event) => stop(event, () => onPreview(doc))}><Eye size={13} /> Ver</button><button className="btn btn-sm btn-outline" onClick={(event) => stop(event, () => onEdit(doc))}><Pencil size={13} /> Editar</button>{doc.status !== 'VALIDADO' && <button className="btn btn-sm btn-outline" onClick={(event) => stop(event, () => onValidate(doc))}><ShieldCheck size={13} /> Validar</button>}<button className="btn btn-sm btn-outline" onClick={(event) => stop(event, () => onDownload(doc))}><Download size={13} /> Baixar</button><button className="btn btn-sm btn-outline" onClick={(event) => stop(event, () => onDelete(doc))}><Trash2 size={13} /> Excluir</button></div>
 }
 
 function Modal({ title, children, onClose }) {
@@ -408,7 +460,8 @@ function Modal({ title, children, onClose }) {
 function PreviewModal({ doc, pastas, maximizado, onToggleMaximizado, onClose, onDownload, onDelete, onEdit, onValidate, onMove }) {
   const Icon = getFileIcon(doc)
   const cfg = statusConfig[doc.status] || statusConfig.PENDENTE_REVISAO
-  const podePreview = doc.conteudo && (doc.mimeType?.startsWith('image/') || doc.mimeType === 'application/pdf')
+  const previewSrc = doc.previewUrl || ''
+  const podePreview = Boolean(previewSrc)
   const largura = maximizado ? 'calc(100vw - 40px)' : 'min(1380px, calc(100vw - 56px))'
   const altura = maximizado ? 'calc(100vh - 40px)' : 'min(86vh, 920px)'
   const alturaPreview = maximizado ? 'calc(100vh - 140px)' : 'min(72vh, 760px)'
@@ -419,10 +472,10 @@ function PreviewModal({ doc, pastas, maximizado, onToggleMaximizado, onClose, on
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
           <div>
             <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 22 }}>Pré-visualização do documento</h2>
-            <p style={{ marginTop: 4, color: 'var(--gray-400)', fontSize: 12 }}>Janela ampliada e redimensionável. Para leitura completa, use Abrir em nova aba.</p>
+            <p style={{ marginTop: 4, color: 'var(--gray-400)', fontSize: 12 }}>Arquivos LibreOffice/OpenDocument são convertidos para PDF pelo backend.</p>
           </div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-            {podePreview && <button className="btn btn-sm btn-outline" onClick={() => abrirConteudoNovaAba(doc)}><ExternalLink size={13} /> Abrir em nova aba</button>}
+            {podePreview && <button className="btn btn-sm btn-outline" onClick={() => abrirUrlNovaAba(previewSrc)}><ExternalLink size={13} /> Abrir em nova aba</button>}
             <button className="btn btn-sm btn-outline" onClick={onToggleMaximizado}>{maximizado ? 'Restaurar' : 'Maximizar'}</button>
             <button className="btn btn-ghost btn-icon" onClick={onClose}><X size={18} /></button>
           </div>
@@ -431,7 +484,7 @@ function PreviewModal({ doc, pastas, maximizado, onToggleMaximizado, onClose, on
         <div style={{ display: 'grid', gridTemplateColumns: maximizado ? 'minmax(0, 1fr) 320px' : 'minmax(0, 1fr) 360px', gap: 18, minHeight: 0 }}>
           <div style={{ border: '1px solid var(--gray-100)', borderRadius: 12, overflow: 'hidden', display: 'grid', placeItems: 'center', background: 'var(--gray-50)', minHeight: 480 }}>
             {podePreview ? (
-              <iframe title={doc.nome} src={doc.conteudo} style={{ width: '100%', height: alturaPreview, border: 0, background: '#fff' }} />
+              <iframe title={doc.nome} src={previewSrc} style={{ width: '100%', height: alturaPreview, border: 0, background: '#fff' }} />
             ) : (
               <div style={{ textAlign: 'center', color: 'var(--gray-500)' }}><Icon size={64} /><div style={{ marginTop: 10 }}>Preview indisponível para este formato.</div><button className="btn btn-outline" style={{ marginTop: 14 }} onClick={() => onDownload(doc)}><Download size={14} /> Baixar arquivo</button></div>
             )}
@@ -440,6 +493,7 @@ function PreviewModal({ doc, pastas, maximizado, onToggleMaximizado, onClose, on
           <aside style={{ display: 'grid', gap: 10, alignContent: 'start', overflowY: 'auto', paddingRight: 4 }}>
             <h3 style={{ lineHeight: 1.35 }}>{doc.nome}</h3>
             <span className={`badge ${cfg.badge}`} style={{ width: 'fit-content' }}>{cfg.label}</span>
+            {doc.libreOfficePreview && <span className="badge badge-blue" style={{ width: 'fit-content' }}>LibreOffice convertido para PDF</span>}
             <div style={{ fontSize: 13, color: 'var(--gray-500)' }}>Categoria: <strong>{doc.categoria}</strong></div>
             <div style={{ fontSize: 13, color: 'var(--gray-500)' }}>Módulo: <strong>{moduloLabels[doc.modulo] || doc.modulo}</strong></div>
             <div style={{ fontSize: 13, color: 'var(--gray-500)' }}>Tamanho: <strong>{formatBytes(doc.tamanho)}</strong></div>
@@ -449,7 +503,7 @@ function PreviewModal({ doc, pastas, maximizado, onToggleMaximizado, onClose, on
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               <button className="btn btn-outline" onClick={() => onEdit(doc)}><Pencil size={14} /> Editar</button>
               {doc.status !== 'VALIDADO' && <button className="btn btn-outline" onClick={() => onValidate(doc)}><ShieldCheck size={14} /> Validar</button>}
-              {podePreview && <button className="btn btn-outline" onClick={() => abrirConteudoNovaAba(doc)}><ExternalLink size={14} /> Nova aba</button>}
+              {podePreview && <button className="btn btn-outline" onClick={() => abrirUrlNovaAba(previewSrc)}><ExternalLink size={14} /> Nova aba</button>}
               <button className="btn btn-outline" onClick={() => onDownload(doc)}><Download size={14} /> Baixar</button>
               <button className="btn btn-outline" onClick={() => onDelete(doc)}><Trash2 size={14} /> Excluir</button>
             </div>
