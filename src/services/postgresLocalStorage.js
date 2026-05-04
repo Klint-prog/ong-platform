@@ -28,7 +28,9 @@ function shouldPersistKey(key) {
   // já foram migrados para endpoint próprio com volume persistente.
   if (normalized === 'ong_institucional_documentos_criticos') return false
 
-  return normalized.startsWith('ong_') || normalized.startsWith('ong_platform_')
+  // O projeto usa chaves antigas com ponto e chaves novas com underline.
+  // Ex.: ong.documentos, ong.documentos.folders, ong_financeiro_transacoes.
+  return normalized.startsWith('ong_') || normalized.startsWith('ong.') || normalized.startsWith('ong_platform_')
 }
 
 async function requestJson(url, options = {}) {
@@ -56,7 +58,7 @@ async function flushWrites() {
 
 function scheduleFlush() {
   if (writeTimer) clearTimeout(writeTimer)
-  writeTimer = setTimeout(flushWrites, 120)
+  writeTimer = setTimeout(flushWrites, 30)
 }
 
 export async function hydratePostgresLocalStorage() {
