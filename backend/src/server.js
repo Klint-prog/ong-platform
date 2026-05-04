@@ -4,10 +4,13 @@ import multer from 'multer'
 import path from 'path'
 import fs from 'fs'
 import crypto from 'crypto'
+import { execFile } from 'child_process'
+import { promisify } from 'util'
 import { fileURLToPath } from 'url'
 import pg from 'pg'
 
 const { Pool } = pg
+const execFileAsync = promisify(execFile)
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
@@ -17,8 +20,21 @@ const MAX_FILE_SIZE = Number(process.env.MAX_FILE_SIZE || 50 * 1024 * 1024)
 const DATABASE_URL = process.env.DATABASE_URL || `postgres://${process.env.DB_USER || 'ong'}:${process.env.DB_PASSWORD || 'ong123'}@${process.env.DB_HOST || 'db'}:${process.env.DB_PORT || 5432}/${process.env.DB_NAME || 'ong_platform'}`
 
 fs.mkdirSync(path.join(UPLOAD_DIR, 'institucional'), { recursive: true })
+fs.mkdirSync(path.join(UPLOAD_DIR, 'previews'), { recursive: true })
 
 const pool = new Pool({ connectionString: DATABASE_URL })
+
+const LIBREOFFICE_EXTENSIONS = new Set(['.odt', '.ott', '.ods', '.ots', '.odp', '.otp', '.odg', '.odf'])
+const LIBREOFFICE_MIME_TYPES = new Set([
+  'application/vnd.oasis.opendocument.text',
+  'application/vnd.oasis.opendocument.text-template',
+  'application/vnd.oasis.opendocument.spreadsheet',
+  'application/vnd.oasis.opendocument.spreadsheet-template',
+  'application/vnd.oasis.opendocument.presentation',
+  'application/vnd.oasis.opendocument.presentation-template',
+  'application/vnd.oasis.opendocument.graphics',
+  'application/vnd.oasis.opendocument.formula',
+])
 
 async function initDb() {
   await pool.query(`
@@ -66,6 +82,9 @@ async function initDb() {
 }
 
 function mapDocumento(row) {
+  const originalName = row.nome_arquivo || row.nome || ''
+  const ext = path.extname(originalName).toLowerCase()
+  const libreOfficePreview = Boolean(row.possui_arquivo) && (LIBREOFFICE_EXTENSIONS.has(ext) || LIBREOFFICE_MIME_TYPES.has(row.mime_type || ''))
   return {
     id: row.id,
     nome: row.nome,
@@ -78,7 +97,9 @@ function mapDocumento(row) {
     tamanho: Number(row.tamanho || 0),
     hashArquivo: row.hash_arquivo || '',
     atualizadoEm: row.atualizado_em,
+    libreOfficePreview,
     url: row.possui_arquivo ? `/api/institucional/documentos/${row.id}/arquivo` : '',
+    previewUrl: row.possui_arquivo && libreOfficePreview ? `/api/institucional/documentos/${row.id}/preview.pdf` : '',
   }
 }
 
@@ -89,6 +110,37 @@ function safeFilename(name = 'arquivo') {
     .replace(/[^a-zA-Z0-9._-]+/g, '-')
     .replace(/-+/g, '-')
     .slice(0, 160)
+}
+
+function isLibreOfficeDocument(filename = '', mime = '') {
+  return LIBREOFFICE_EXTENSIONS.has(path.extname(filename).toLowerCase()) || LIBREOFFICE_MIME_TYPES.has(mime)
+}
+
+async function converterParaPdf(absolutePath, cacheKey) {
+  const previewDir = path.join(UPLOAD_DIR, 'previews')
+  const outputPath = path.join(previewDir, `${cacheKey}.pdf`)
+  if (fs.existsSync(outputPath)) return outputPath
+
+  const tempDir = path.join(previewDir, `tmp-${cacheKey}`)
+  fs.mkdirSync(tempDir, { recursive: true })
+
+  await execFileAsync('soffice', [
+    '--headless',
+    '--nologo',
+    '--nofirststartwizard',
+    '--convert-to',
+    'pdf',
+    '--outdir',
+    tempDir,
+    absolutePath,
+  ], { timeout: 120000 })
+
+  const generated = fs.readdirSync(tempDir).find((item) => item.toLowerCase().endsWith('.pdf'))
+  if (!generated) throw new Error('LibreOffice não gerou o PDF de pré-visualização.')
+
+  fs.renameSync(path.join(tempDir, generated), outputPath)
+  fs.rmSync(tempDir, { recursive: true, force: true })
+  return outputPath
 }
 
 const storage = multer.diskStorage({
@@ -181,14 +233,16 @@ app.post('/api/institucional/documentos/:id/upload', upload.single('arquivo'), a
     const file = req.file
     if (!file) return res.status(400).json({ error: 'Arquivo não enviado.' })
 
-    const existing = await pool.query('SELECT caminho_arquivo FROM documentos_institucionais WHERE id = $1', [id])
+    const existing = await pool.query('SELECT caminho_arquivo, hash_arquivo FROM documentos_institucionais WHERE id = $1', [id])
     if (!existing.rowCount) {
       fs.unlink(file.path, () => {})
       return res.status(404).json({ error: 'Documento institucional não encontrado.' })
     }
 
     const antigo = existing.rows[0]?.caminho_arquivo
+    const antigoHash = existing.rows[0]?.hash_arquivo
     if (antigo) fs.unlink(path.join(UPLOAD_DIR, antigo), () => {})
+    if (antigoHash) fs.unlink(path.join(UPLOAD_DIR, 'previews', `${antigoHash}.pdf`), () => {})
 
     const buffer = await fs.promises.readFile(file.path)
     const hash = crypto.createHash('sha256').update(buffer).digest('hex')
@@ -205,6 +259,25 @@ app.post('/api/institucional/documentos/:id/upload', upload.single('arquivo'), a
     )
 
     res.json(mapDocumento(rows[0]))
+  } catch (error) {
+    next(error)
+  }
+})
+
+app.get('/api/institucional/documentos/:id/preview.pdf', async (req, res, next) => {
+  try {
+    const { rows } = await pool.query('SELECT * FROM documentos_institucionais WHERE id = $1', [req.params.id])
+    const doc = rows[0]
+    if (!doc?.possui_arquivo || !doc.caminho_arquivo) return res.status(404).send('Arquivo não encontrado.')
+    if (!isLibreOfficeDocument(doc.nome_arquivo, doc.mime_type)) return res.status(415).send('Este tipo de arquivo não precisa de conversão LibreOffice.')
+
+    const absolutePath = path.join(UPLOAD_DIR, doc.caminho_arquivo)
+    if (!fs.existsSync(absolutePath)) return res.status(404).send('Arquivo físico não encontrado.')
+
+    const previewPath = await converterParaPdf(absolutePath, doc.hash_arquivo || crypto.createHash('sha256').update(doc.caminho_arquivo).digest('hex'))
+    res.setHeader('Content-Type', 'application/pdf')
+    res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent((doc.nome_arquivo || doc.nome).replace(/\.[^.]+$/, '.pdf'))}"`)
+    res.sendFile(previewPath)
   } catch (error) {
     next(error)
   }
@@ -229,10 +302,12 @@ app.get('/api/institucional/documentos/:id/arquivo', async (req, res, next) => {
 
 app.delete('/api/institucional/documentos/:id/arquivo', async (req, res, next) => {
   try {
-    const { rows } = await pool.query('SELECT caminho_arquivo FROM documentos_institucionais WHERE id = $1', [req.params.id])
+    const { rows } = await pool.query('SELECT caminho_arquivo, hash_arquivo FROM documentos_institucionais WHERE id = $1', [req.params.id])
     if (!rows.length) return res.status(404).json({ error: 'Documento institucional não encontrado.' })
     const antigo = rows[0]?.caminho_arquivo
+    const antigoHash = rows[0]?.hash_arquivo
     if (antigo) fs.unlink(path.join(UPLOAD_DIR, antigo), () => {})
+    if (antigoHash) fs.unlink(path.join(UPLOAD_DIR, 'previews', `${antigoHash}.pdf`), () => {})
 
     const updated = await pool.query(
       `UPDATE documentos_institucionais
@@ -254,6 +329,9 @@ app.use((error, _req, res, _next) => {
   console.error(error)
   if (error.code === 'LIMIT_FILE_SIZE') {
     return res.status(413).json({ error: `Arquivo excede o limite de ${Math.round(MAX_FILE_SIZE / 1024 / 1024)} MB.` })
+  }
+  if (error.killed || /LibreOffice|soffice|convert/i.test(error.message || '')) {
+    return res.status(500).json({ error: 'Falha ao converter o documento LibreOffice para pré-visualização.' })
   }
   res.status(500).json({ error: 'Erro interno no servidor.' })
 })
