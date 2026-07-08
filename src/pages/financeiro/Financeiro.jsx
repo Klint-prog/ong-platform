@@ -6,7 +6,6 @@ import { deleteTransacaoStorage, listTransacoesStorage } from './transacoesStora
 import { deleteComprovanteStorage, ensureComprovantesStorage, saveComprovantesStorage, updateComprovanteStorage } from './comprovantesStorage'
 import { deleteContaStorage, deleteOrcamentoStorage, listContasStorage, listOrcamentosStorage } from './financeiroStorage'
 import { loadInstitucional } from '../institucional/institucionalStorage'
-import { AV_VADAI_LOGO_DATA_URL } from './financeiroLogo'
 
 const fmt = (v) => `R$ ${Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
 const comprovantes = []
@@ -245,10 +244,10 @@ function FinanceiroDocumento({ dadosOng, tipo, item, referencia }) {
     <article className="financeiro-documento-print">
       <header className="financeiro-doc-header">
         <div className="financeiro-doc-brand">
-          <img src={dadosOng.logoUrl || AV_VADAI_LOGO_DATA_URL} alt="Logo da ONG" />
+          {dadosOng.logoUrl && <img src={dadosOng.logoUrl} alt="Logo da ONG" />}
           <div>
-            <h1>{dadosOng.nome || 'AV Associação Vadai'}</h1>
-            <p>{dadosOng.atuacao || 'Caridade que motiva'}</p>
+            <h1>{dadosOng.nomeFantasia || dadosOng.nome || 'Organização'}</h1>
+            <p>{dadosOng.atuacao || ''}</p>
           </div>
         </div>
         <div className="financeiro-doc-meta">
@@ -329,5 +328,5 @@ function AccountabilityReport({ transacoes, comprovantes, dadosOng }) {
   const despesas = transacoes.filter((t) => t.tipo === 'DESPESA' && t.status === 'PAGA').reduce((s, t) => s + Number(t.valor || 0), 0)
   const pendencias = comprovantes.filter((c) => c.status === 'PENDENTE').length
 
-  return <div className="mod-financeiro"><div className="page-header no-print"><div><h1 className="page-title">Prestação de contas</h1><p className="page-subtitle">Relatório financeiro real consolidado</p></div><button className="btn btn-primary" onClick={() => window.print()}><Printer size={16} /> Gerar PDF</button></div><div className="financeiro-documento-print"><header className="financeiro-doc-header"><div className="financeiro-doc-brand"><img src={dadosOng.logoUrl || AV_VADAI_LOGO_DATA_URL} alt="Logo da ONG" /><div><h1>{dadosOng.nome || 'AV Associação Vadai'}</h1><p>Prestação de contas consolidada</p></div></div><div className="financeiro-doc-meta"><span className="badge badge-blue">Relatório</span><strong>{gerarReferencia('PRES')}</strong><small>{new Date().toLocaleString('pt-BR')}</small></div></header><div className="grid-4" style={{ marginBottom: 24 }}><StatCard mod="mod-financeiro" icon={TrendingUp} label="Receitas recebidas" value={fmt(receitas)} /><StatCard mod="mod-pessoas" icon={TrendingDown} label="Despesas pagas" value={fmt(despesas)} /><StatCard mod="mod-dashboard" icon={Wallet} label="Saldo do período" value={fmt(receitas - despesas)} /><StatCard mod="mod-projetos" icon={AlertTriangle} label="Pendências" value={String(pendencias)} /></div><section className="financeiro-doc-declaracao"><p>Relatório gerado com base nas transações e comprovantes cadastrados no sistema de gestão social.</p></section></div></div>
+  return <div className="mod-financeiro"><div className="page-header no-print"><div><h1 className="page-title">Prestação de contas</h1><p className="page-subtitle">Relatório financeiro real consolidado</p></div><button className="btn btn-primary" onClick={() => window.print()}><Printer size={16} /> Gerar PDF</button></div><div className="financeiro-documento-print"><header className="financeiro-doc-header"><div className="financeiro-doc-brand">{dadosOng.logoUrl && <img src={dadosOng.logoUrl} alt="Logo da ONG" />}<div><h1>{dadosOng.nomeFantasia || dadosOng.nome || 'Organização'}</h1><p>Prestação de contas consolidada</p></div></div><div className="financeiro-doc-meta"><span className="badge badge-blue">Relatório</span><strong>{gerarReferencia('PRES')}</strong><small>{new Date().toLocaleString('pt-BR')}</small></div></header><div className="grid-4" style={{ marginBottom: 24 }}><StatCard mod="mod-financeiro" icon={TrendingUp} label="Receitas recebidas" value={fmt(receitas)} /><StatCard mod="mod-pessoas" icon={TrendingDown} label="Despesas pagas" value={fmt(despesas)} /><StatCard mod="mod-dashboard" icon={Wallet} label="Saldo do período" value={fmt(receitas - despesas)} /><StatCard mod="mod-projetos" icon={AlertTriangle} label="Pendências" value={String(pendencias)} /></div><section className="financeiro-doc-declaracao"><p>Relatório gerado com base nas transações e comprovantes cadastrados no sistema de gestão social.</p></section></div></div>
 }

@@ -438,8 +438,8 @@ export function EditarInstitucionalPage() {
       }}
       campos={[
         { name: 'nome', label: 'Nome da organização', placeholder: 'Associação...' },
-        { name: 'nomeFantasia', label: 'Nome fantasia / nome de exibição', placeholder: 'Ex.: AV Associação Vadai' },
-        { name: 'slogan', label: 'Slogan', placeholder: 'Ex.: Caridade que motiva' },
+        { name: 'nomeFantasia', label: 'Nome fantasia / nome de exibição', placeholder: 'Ex.: Associação Esperança' },
+        { name: 'slogan', label: 'Slogan', placeholder: 'Ex.: Transformando vidas' },
         { name: 'cnpj', label: 'CNPJ', placeholder: '00.000.000/0000-00' },
         { name: 'atuacao', label: 'Área de atuação', placeholder: 'Desenvolvimento rural...' },
         { name: 'endereco', label: 'Endereço', placeholder: 'Cidade - UF' },

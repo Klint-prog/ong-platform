@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import NfpService from '../../services/NfpService'
 import { QrCode, Hand, Landmark, Send, Trash2, CheckCircle2, MonitorCheck, Power, Volume2, FileDown, FileText, User } from 'lucide-react'
 import { getUsuarioSessao } from '../../services/authPermissions'
+import { loadInstitucional } from '../institucional/institucionalStorage'
 
 // Chave com prefixo "ong_" para ser sincronizada com o PostgreSQL pela
 // camada postgresLocalStorage (chaves fora do prefixo ficam só em memória).
@@ -308,6 +309,13 @@ export default function NotasPaulista() {
       setErro('Nenhuma nota registrada para gerar o lote.')
       return
     }
+
+    const cnpjOng = String(loadInstitucional().cnpj || '').replace(/\D/g, '')
+    if (cnpjOng.length !== 14) {
+      setErro('Cadastre o CNPJ completo da organização no módulo Institucional antes de gerar o lote.')
+      return
+    }
+
     try {
       // O crédito é apurado pela SEFAZ a partir da chave de acesso;
       // o campo posicional de valor segue no arquivo preenchido com zeros.
@@ -318,7 +326,7 @@ export default function NotasPaulista() {
 
       const txt = nfpService.gerarArquivoLote(
         {
-          cnpj: '12.345.678/0001-99',
+          cnpj: cnpjOng,
           mesReferencia: new Date().toISOString().slice(0, 7).replace('-', ''),
         },
         notas,

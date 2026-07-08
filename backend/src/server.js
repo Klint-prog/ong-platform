@@ -98,10 +98,10 @@ async function initDb() {
   `)
 
   const defaults = [
-    ['estatuto-social', 'Estatuto social', 'Pendente de arquivo', 'badge-yellow', 'Sem vencimento'],
-    ['ata-eleicao-diretoria', 'Ata de eleição da diretoria', 'Pendente de arquivo', 'badge-yellow', '31/12/2027'],
-    ['certidao-negativa-federal', 'Certidão negativa federal', 'Pendente de arquivo', 'badge-yellow', '20/06/2026'],
-    ['comprovante-endereco', 'Comprovante de endereço', 'Pendente de arquivo', 'badge-yellow', '12/2026'],
+    ['estatuto-social', 'Estatuto social', 'Pendente de arquivo', 'badge-yellow', null],
+    ['ata-eleicao-diretoria', 'Ata de eleição da diretoria', 'Pendente de arquivo', 'badge-yellow', null],
+    ['certidao-negativa-federal', 'Certidão negativa federal', 'Pendente de arquivo', 'badge-yellow', null],
+    ['comprovante-endereco', 'Comprovante de endereço', 'Pendente de arquivo', 'badge-yellow', null],
   ]
 
   for (const item of defaults) {

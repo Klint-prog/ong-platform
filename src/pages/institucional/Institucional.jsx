@@ -2,15 +2,14 @@ import { Building2, FileCheck2, ShieldCheck, Users, MapPin, Upload, Eye, Downloa
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { loadInstitucional, saveInstitucional } from './institucionalStorage'
-import { AV_VADAI_LOGO_DATA_URL } from '../financeiro/financeiroLogo'
 
 const API_BASE = '/api'
 const MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024
 const documentosFallback = [
-  { id: 'estatuto-social', nome: 'Estatuto social', status: 'Pendente de arquivo', vencimento: 'Sem vencimento', badge: 'badge-yellow', possuiArquivo: false },
-  { id: 'ata-eleicao-diretoria', nome: 'Ata de eleição da diretoria', status: 'Pendente de arquivo', vencimento: '31/12/2027', badge: 'badge-yellow', possuiArquivo: false },
-  { id: 'certidao-negativa-federal', nome: 'Certidão negativa federal', status: 'Pendente de arquivo', vencimento: '20/06/2026', badge: 'badge-yellow', possuiArquivo: false },
-  { id: 'comprovante-endereco', nome: 'Comprovante de endereço', status: 'Pendente de arquivo', vencimento: '12/2026', badge: 'badge-yellow', possuiArquivo: false },
+  { id: 'estatuto-social', nome: 'Estatuto social', status: 'Pendente de arquivo', vencimento: '', badge: 'badge-yellow', possuiArquivo: false },
+  { id: 'ata-eleicao-diretoria', nome: 'Ata de eleição da diretoria', status: 'Pendente de arquivo', vencimento: '', badge: 'badge-yellow', possuiArquivo: false },
+  { id: 'certidao-negativa-federal', nome: 'Certidão negativa federal', status: 'Pendente de arquivo', vencimento: '', badge: 'badge-yellow', possuiArquivo: false },
+  { id: 'comprovante-endereco', nome: 'Comprovante de endereço', status: 'Pendente de arquivo', vencimento: '', badge: 'badge-yellow', possuiArquivo: false },
 ]
 
 const LOGO_MAX_DIMENSAO = 512
@@ -82,7 +81,10 @@ export default function Institucional() {
   const [erroDocs, setErroDocs] = useState('')
   const [enviandoDocId, setEnviandoDocId] = useState(null)
   const fileInputs = useRef({})
-  const logoSrc = dados.logoUrl || AV_VADAI_LOGO_DATA_URL
+  const logoSrc = dados.logoUrl
+
+  const cargosDiretoria = [dados.presidente, dados.vicePresidente, dados.diretorOperacoes, dados.viceDiretorOperacoes, dados.secretaria, dados.diretorFinanceiro, dados.viceDiretorFinanceiro, dados.conselheiro1, dados.conselheiro2, dados.conselheiro3]
+  const diretoriaPreenchida = cargosDiretoria.filter((nome) => nome && nome !== 'A definir').length
 
   const diretoria = useMemo(() => [
     { cargo: 'Presidente', nome: dados.presidente },
@@ -208,20 +210,22 @@ export default function Institucional() {
 
       <section className="card" style={{ marginBottom: 24, display: 'grid', gridTemplateColumns: '240px 1fr', gap: 22, alignItems: 'center' }}>
         <div style={{ border: '1px solid var(--gray-100)', borderRadius: 16, padding: 14, background: '#fff', display: 'grid', placeItems: 'center', minHeight: 145 }}>
-          <img src={logoSrc} alt="Logo institucional" style={{ maxWidth: '100%', maxHeight: 130, objectFit: 'contain' }} />
+          {logoSrc
+            ? <img src={logoSrc} alt="Logo institucional" style={{ maxWidth: '100%', maxHeight: 130, objectFit: 'contain' }} />
+            : <div style={{ display: 'grid', placeItems: 'center', gap: 8, color: 'var(--gray-300)' }}><Building2 size={40} strokeWidth={1.4} /><span style={{ fontSize: 12, color: 'var(--gray-400)' }}>Nenhuma logo cadastrada</span></div>}
         </div>
         <div style={{ display: 'grid', gap: 10 }}>
           <div>
             <div className="badge badge-blue" style={{ marginBottom: 8 }}>Identidade visual</div>
-            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 24, marginBottom: 4 }}>{dados.nomeFantasia || dados.nome}</h2>
-            <p style={{ color: 'var(--gray-500)' }}>{dados.slogan || dados.atuacao}</p>
+            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 24, marginBottom: 4 }}>{dados.nomeFantasia || dados.nome || 'Nome da organização não informado'}</h2>
+            <p style={{ color: 'var(--gray-500)' }}>{dados.slogan || dados.atuacao || 'Preencha os dados em “Editar cadastro”.'}</p>
           </div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <label className="btn btn-outline" style={{ width: 'fit-content', cursor: 'pointer' }}>
               <Upload size={15} /> Inserir/alterar logo
               <input type="file" accept="image/*" onChange={atualizarLogo} style={{ display: 'none' }} />
             </label>
-            {dados.logoUrl && <button className="btn btn-outline" onClick={removerLogo}>Restaurar logo padrão</button>}
+            {dados.logoUrl && <button className="btn btn-outline" onClick={removerLogo}>Remover logo</button>}
           </div>
           <p style={{ fontSize: 12, color: 'var(--gray-400)' }}>Este logo passa a ser usado nos documentos financeiros, relatórios e identidade da plataforma.</p>
         </div>
@@ -230,8 +234,8 @@ export default function Institucional() {
       <div className="grid-4" style={{ marginBottom: 24 }}>
         <div className="stat-card mod-institucional"><div className="stat-icon"><Building2 size={20} /></div><div><div className="stat-label">CNPJ</div><div className="stat-value" style={{ fontSize: 20 }}>{dados.cnpj || 'Não informado'}</div></div></div>
         <div className="stat-card mod-documentos"><div className="stat-icon"><FileCheck2 size={20} /></div><div><div className="stat-label">Documentos</div><div className="stat-value">{documentosCriticos.filter((doc) => doc.possuiArquivo).length}/{documentosCriticos.length}</div></div></div>
-        <div className="stat-card mod-beneficiarios"><div className="stat-icon"><Users size={20} /></div><div><div className="stat-label">Diretoria</div><div className="stat-value">10</div></div></div>
-        <div className="stat-card mod-captacao"><div className="stat-icon"><ShieldCheck size={20} /></div><div><div className="stat-label">Conformidade</div><div className="stat-value">92%</div></div></div>
+        <div className="stat-card mod-beneficiarios"><div className="stat-icon"><Users size={20} /></div><div><div className="stat-label">Diretoria</div><div className="stat-value">{diretoriaPreenchida}/{cargosDiretoria.length}</div></div></div>
+        <div className="stat-card mod-captacao"><div className="stat-icon"><ShieldCheck size={20} /></div><div><div className="stat-label">Documentos em dia</div><div className="stat-value">{documentosCriticos.length ? Math.round((documentosCriticos.filter((doc) => doc.possuiArquivo).length / documentosCriticos.length) * 100) : 0}%</div></div></div>
       </div>
 
       <div className="grid-2">
@@ -255,7 +259,7 @@ export default function Institucional() {
             {diretoria.map((item) => (
               <div key={item.cargo} style={{ display: 'flex', justifyContent: 'space-between', gap: 16, padding: '12px 0', borderBottom: '1px solid var(--gray-100)' }}>
                 <span style={{ color: 'var(--gray-400)', fontSize: 13 }}>{item.cargo}</span>
-                <strong style={{ textAlign: 'right', color: 'var(--gray-800)' }}>{item.nome}</strong>
+                <strong style={{ textAlign: 'right', color: item.nome ? 'var(--gray-800)' : 'var(--gray-300)' }}>{item.nome || 'A definir'}</strong>
               </div>
             ))}
           </div>
@@ -274,7 +278,7 @@ export default function Institucional() {
                 <tr key={doc.id}>
                   <td>{doc.nome}</td>
                   <td><span className={`badge ${doc.badge}`}>{doc.status}</span></td>
-                  <td>{doc.vencimento}</td>
+                  <td>{doc.vencimento || <span style={{ color: 'var(--gray-400)' }}>Não informado</span>}</td>
                   <td>{doc.possuiArquivo ? <span style={{ fontSize: 12, color: 'var(--gray-500)' }}>{doc.nomeArquivo} • {formatBytes(doc.tamanho)}</span> : <span style={{ color: 'var(--gray-400)', fontSize: 12 }}>Nenhum arquivo</span>}</td>
                   <td>
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
