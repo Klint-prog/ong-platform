@@ -69,6 +69,23 @@
   justify-content: center;
   flex-shrink: 0;
   box-shadow: 0 10px 30px rgba(34, 197, 94, .22);
+  overflow: hidden;
+}
+
+/* A logo enviada pela ONG fica contida no quadrado (nunca estoura o
+   layout) e ganha fundo branco neutro em vez do gradiente. */
+.sidebar-logo-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+.sidebar-logo-icon.has-custom-logo {
+  background: #fff;
+  border: 1px solid var(--gray-100);
+  box-shadow: none;
+  padding: 3px;
 }
 
 .sidebar-logo-content,

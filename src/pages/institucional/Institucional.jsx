@@ -13,12 +13,35 @@ const documentosFallback = [
   { id: 'comprovante-endereco', nome: 'Comprovante de endereço', status: 'Pendente de arquivo', vencimento: '12/2026', badge: 'badge-yellow', possuiArquivo: false },
 ]
 
-function arquivoParaDataUrl(file) {
+const LOGO_MAX_DIMENSAO = 512
+const LOGO_MAX_UPLOAD_BYTES = 8 * 1024 * 1024
+
+/*
+  Normaliza a logo enviada: redimensiona proporcionalmente para caber em
+  512px (mantendo transparência, exportada como PNG). Sem isso, uma foto
+  de 3000px era salva inteira como data URL e renderizada no tamanho
+  natural em alguns pontos da interface, quebrando o layout.
+*/
+function normalizarLogo(file) {
   return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => resolve(reader.result)
-    reader.onerror = reject
-    reader.readAsDataURL(file)
+    const objectUrl = URL.createObjectURL(file)
+    const img = new Image()
+    img.onload = () => {
+      URL.revokeObjectURL(objectUrl)
+      const escala = Math.min(1, LOGO_MAX_DIMENSAO / Math.max(img.width, img.height))
+      const largura = Math.max(1, Math.round(img.width * escala))
+      const altura = Math.max(1, Math.round(img.height * escala))
+      const canvas = document.createElement('canvas')
+      canvas.width = largura
+      canvas.height = altura
+      canvas.getContext('2d').drawImage(img, 0, 0, largura, altura)
+      resolve(canvas.toDataURL('image/png'))
+    }
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl)
+      reject(new Error('O arquivo enviado não é uma imagem válida.'))
+    }
+    img.src = objectUrl
   })
 }
 
@@ -92,12 +115,26 @@ export default function Institucional() {
 
   const atualizarLogo = async (event) => {
     const file = event.target.files?.[0]
-    if (!file) return
-    const logoUrl = await arquivoParaDataUrl(file)
-    const next = { ...dados, logoUrl }
-    saveInstitucional(next)
-    setDados(next)
     event.target.value = ''
+    if (!file) return
+
+    if (!file.type.startsWith('image/')) {
+      window.alert('Envie um arquivo de imagem (PNG, JPG, SVG ou WebP).')
+      return
+    }
+    if (file.size > LOGO_MAX_UPLOAD_BYTES) {
+      window.alert(`Imagem muito grande (${formatBytes(file.size)}). O limite para a logo é ${formatBytes(LOGO_MAX_UPLOAD_BYTES)}.`)
+      return
+    }
+
+    try {
+      const logoUrl = await normalizarLogo(file)
+      const next = { ...dados, logoUrl }
+      saveInstitucional(next)
+      setDados(next)
+    } catch (error) {
+      window.alert(error.message || 'Não foi possível processar a imagem enviada.')
+    }
   }
 
   const removerLogo = () => {

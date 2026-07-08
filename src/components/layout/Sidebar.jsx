@@ -57,7 +57,7 @@ export default function Sidebar({ user, onLogout, collapsed = false, onToggleCol
   return (
     <aside className="app-sidebar" aria-label="Menu principal">
       <div className="sidebar-logo">
-        <div className="sidebar-logo-icon" title={collapsed ? nome : undefined}>
+        <div className={`sidebar-logo-icon ${logo ? 'has-custom-logo' : ''}`} title={collapsed ? nome : undefined}>
           {logo ? <img src={logo} alt="Logo institucional" /> : <Leaf size={18} color="#fff" strokeWidth={2.5} />}
         </div>
         <div className="sidebar-logo-content">
