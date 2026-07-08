@@ -39,21 +39,14 @@ function parseNotaQr(raw) {
   if (!clean) return null
 
   let chaveAcesso = clean.replace(/\D/g, '').slice(0, 44)
-  let valor = null
 
   if (/^https?:\/\//i.test(clean)) {
     try {
       const url = new URL(clean)
       const p = url.searchParams.get('p')
       if (p) {
-        const partes = p.split('|')
-        const primeira = partes[0]
+        const primeira = p.split('|')[0]
         if (primeira) chaveAcesso = primeira.replace(/\D/g, '').slice(0, 44)
-        // Formato offline traz vNF na 5ª posição (índice 4)
-        const possivelValor = partes[4]
-        if (possivelValor && /^\d+(\.\d{1,2})?$/.test(possivelValor)) {
-          valor = Number(possivelValor)
-        }
       }
     } catch {
       // URL malformada: mantém o fallback por dígitos
@@ -65,16 +58,21 @@ function parseNotaQr(raw) {
   return {
     chaveAcesso,
     codigo: chaveAcesso,
-    estabelecimento: 'Aguardando conciliação',
-    valor,
     enviado: true,
     dataHora: new Date().toISOString(),
   }
 }
 
-function formatarValor(valor) {
-  if (valor == null) return '—'
-  return valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })
+function formatarCnpj(chave = '') {
+  const cnpj = String(chave).slice(6, 20)
+  if (cnpj.length !== 14) return '—'
+  return cnpj.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5')
+}
+
+function ehDeHoje(iso) {
+  const d = new Date(iso)
+  const hoje = new Date()
+  return d.getFullYear() === hoje.getFullYear() && d.getMonth() === hoje.getMonth() && d.getDate() === hoje.getDate()
 }
 
 export default function NotasPaulista() {
@@ -280,9 +278,10 @@ export default function NotasPaulista() {
 
   const baixarLoteTxt = () => {
     try {
+      // O crédito é apurado pela SEFAZ a partir da chave de acesso;
+      // o campo posicional de valor segue no arquivo preenchido com zeros.
       const notas = scans.map((s) => ({
         chave: s.chaveAcesso,
-        valor: s.valor || 0,
         dataEmissao: s.dataHora,
       }))
 
@@ -312,8 +311,8 @@ export default function NotasPaulista() {
   const resumo = useMemo(() => {
     const total = scans.length
     const enviadas = scans.filter((s) => s.enviado).length
-    const valorNotas = scans.reduce((acc, s) => acc + (typeof s.valor === 'number' ? s.valor : 0), 0)
-    return { total, enviadas, valorNotas }
+    const hoje = scans.filter((s) => ehDeHoje(s.dataHora)).length
+    return { total, enviadas, hoje }
   }, [scans])
 
   return (
@@ -338,7 +337,7 @@ export default function NotasPaulista() {
         </div>
         <div className="stat-card mod-projetos">
           <div className="stat-icon"><Send size={20} /></div>
-          <div><div className="stat-label">Valor identificado nas notas</div><div className="stat-value">R$ {resumo.valorNotas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div></div>
+          <div><div className="stat-label">Registradas hoje</div><div className="stat-value">{resumo.hoje}</div></div>
         </div>
       </div>
 
@@ -411,22 +410,20 @@ export default function NotasPaulista() {
             <thead>
               <tr>
                 <th>Data/Hora</th>
-                <th>Chave</th>
-                <th>Estabelecimento</th>
-                <th>Valor (R$)</th>
+                <th>Chave de acesso</th>
+                <th>CNPJ do emitente</th>
                 <th>Status envio</th>
               </tr>
             </thead>
             <tbody>
               {scans.length === 0 && (
-                <tr><td colSpan={5} style={{ textAlign: 'center', color: 'var(--gray-400)', padding: 24 }}>Nenhuma nota registrada ainda. Faça a leitura de um QR Code acima.</td></tr>
+                <tr><td colSpan={4} style={{ textAlign: 'center', color: 'var(--gray-400)', padding: 24 }}>Nenhuma nota registrada ainda. Faça a leitura de um QR Code acima.</td></tr>
               )}
               {scans.map((nota) => (
                 <tr key={nota.id}>
                   <td>{new Date(nota.dataHora).toLocaleString('pt-BR')}</td>
                   <td style={{ fontFamily: 'monospace' }}>{nota.chaveAcesso}</td>
-                  <td>{nota.estabelecimento}</td>
-                  <td>{formatarValor(nota.valor)}</td>
+                  <td style={{ fontFamily: 'monospace' }}>{formatarCnpj(nota.chaveAcesso)}</td>
                   <td><span className="badge badge-green">Enviada</span></td>
                 </tr>
               ))}

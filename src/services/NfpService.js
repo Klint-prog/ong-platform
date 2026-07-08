@@ -43,7 +43,10 @@ class NfpService {
       const dd = String(data.getUTCDate()).padStart(2, '0')
       const dataAaaammdd = `${yyyy}${mm}${dd}`
 
-      const valorCents = Math.round(Number(nota.valor) * 100)
+      // O valor é opcional: o crédito do programa é apurado pela SEFAZ a
+      // partir da chave de acesso. O campo posicional é mantido no layout,
+      // preenchido com zeros quando não informado.
+      const valorCents = Math.round(Number(nota.valor ?? 0) * 100)
       if (!Number.isFinite(valorCents) || valorCents < 0) {
         throw new Error(`valor inválido para a chave ${nota.chave}.`)
       }
