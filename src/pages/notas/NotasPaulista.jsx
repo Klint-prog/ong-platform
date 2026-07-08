@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import NfpService from '../../services/NfpService'
-import { QrCode, Hand, Landmark, Send, Trash2, CheckCircle2, MonitorCheck, Power, Volume2 } from 'lucide-react'
+import { QrCode, Hand, Landmark, Send, Trash2, CheckCircle2, MonitorCheck, Power, Volume2, FileDown, FileText, User } from 'lucide-react'
+import { getUsuarioSessao } from '../../services/authPermissions'
 
 // Chave com prefixo "ong_" para ser sincronizada com o PostgreSQL pela
 // camada postgresLocalStorage (chaves fora do prefixo ficam só em memória).
 const STORAGE_KEY = 'ong_nfp_scans'
 const MODO_MESA_KEY = 'ong_nfp_modo_mesa'
+const LOTES_KEY = 'ong_nfp_lotes'
 
 // Tempo (ms) sem novos caracteres para considerar a leitura do scanner concluída.
 // Leitoras HID "digitam" muito rápido; 300ms após o último caractere é seguro.
@@ -82,6 +84,9 @@ export default function NotasPaulista() {
   const [ultimaRegistrada, setUltimaRegistrada] = useState('')
   const [modoMesa, setModoMesa] = useState(() => localStorage.getItem(MODO_MESA_KEY) === 'true')
   const [registrosSessao, setRegistrosSessao] = useState(0)
+  const [lotes, setLotes] = useState(() => safeParse(localStorage.getItem(LOTES_KEY)))
+
+  const usuarioAtual = useMemo(() => getUsuarioSessao(), [])
 
   const inputRef = useRef(null)
   const debounceRef = useRef(null)
@@ -141,7 +146,12 @@ export default function NotasPaulista() {
       return 'duplicada'
     }
 
-    const novaNota = { ...parsed, id: `${Date.now()}-${parsed.chaveAcesso.slice(-6)}` }
+    const novaNota = {
+      ...parsed,
+      id: `${Date.now()}-${parsed.chaveAcesso.slice(-6)}`,
+      registradoPor: usuarioAtual?.nome || 'Usuário',
+      registradoPorId: usuarioAtual?.id || '',
+    }
     const next = [novaNota, ...scansRef.current]
     scansRef.current = next
     setScans(next)
@@ -276,7 +286,28 @@ export default function NotasPaulista() {
     setErro('')
   }
 
-  const baixarLoteTxt = () => {
+  const baixarConteudo = (conteudo, nomeArquivo) => {
+    const blob = new Blob([conteudo], { type: 'text/plain;charset=utf-8' })
+    const blobUrl = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = blobUrl
+    a.download = nomeArquivo
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(blobUrl)
+  }
+
+  const persistirLotes = (next) => {
+    setLotes(next)
+    localStorage.setItem(LOTES_KEY, JSON.stringify(next))
+  }
+
+  const gerarLoteTxt = () => {
+    if (!scans.length) {
+      setErro('Nenhuma nota registrada para gerar o lote.')
+      return
+    }
     try {
       // O crédito é apurado pela SEFAZ a partir da chave de acesso;
       // o campo posicional de valor segue no arquivo preenchido com zeros.
@@ -293,19 +324,34 @@ export default function NotasPaulista() {
         notas,
       )
 
-      const blob = new Blob([txt], { type: 'text/plain;charset=utf-8' })
-      const blobUrl = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = blobUrl
-      a.download = `nfp-lote-${new Date().toISOString().slice(0, 10)}.txt`
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      URL.revokeObjectURL(blobUrl)
+      const agora = new Date()
+      const carimbo = agora.toISOString().slice(0, 16).replace('T', '-').replace(':', 'h')
+      const nomeArquivo = `nfp-lote-${carimbo}.txt`
+
+      // Guarda o relatório no sistema (sincronizado com o PostgreSQL)
+      // para permitir baixar novamente ou excluir depois.
+      const registroLote = {
+        id: `lote-${Date.now()}`,
+        nomeArquivo,
+        geradoEm: agora.toISOString(),
+        geradoPor: usuarioAtual?.nome || 'Usuário',
+        geradoPorId: usuarioAtual?.id || '',
+        totalNotas: scans.length,
+        conteudo: txt,
+      }
+      persistirLotes([registroLote, ...lotes])
+
+      baixarConteudo(txt, nomeArquivo)
       setErro('')
     } catch (e) {
       setErro(e.message || 'Não foi possível gerar o arquivo posicional.')
     }
+  }
+
+  const excluirLote = (lote) => {
+    const confirmado = window.confirm(`Excluir o relatório "${lote.nomeArquivo}" (${lote.totalNotas} notas, gerado por ${lote.geradoPor})? Esta ação não pode ser desfeita.`)
+    if (!confirmado) return
+    persistirLotes(lotes.filter((item) => item.id !== lote.id))
   }
 
   const resumo = useMemo(() => {
@@ -393,7 +439,7 @@ export default function NotasPaulista() {
           />
           <button className="btn btn-primary" onClick={() => { garantirAudio(); const r = registrarRef.current(); if (r === 'ok') tocarBeep('ok') }}>Registrar</button>
           <button className="btn btn-outline" onClick={removerTudo}><Trash2 size={15} /> Limpar</button>
-          <button className="btn btn-primary" onClick={baixarLoteTxt}>Gerar .txt</button>
+          <button className="btn btn-primary" onClick={gerarLoteTxt}>Gerar .txt</button>
         </div>
         {erro && <div style={{ marginTop: 10, color: 'var(--red-600)', fontSize: 13 }}>{erro}</div>}
         {!erro && ultimaRegistrada && (
@@ -412,19 +458,62 @@ export default function NotasPaulista() {
                 <th>Data/Hora</th>
                 <th>Chave de acesso</th>
                 <th>CNPJ do emitente</th>
+                <th>Registrada por</th>
                 <th>Status envio</th>
               </tr>
             </thead>
             <tbody>
               {scans.length === 0 && (
-                <tr><td colSpan={4} style={{ textAlign: 'center', color: 'var(--gray-400)', padding: 24 }}>Nenhuma nota registrada ainda. Faça a leitura de um QR Code acima.</td></tr>
+                <tr><td colSpan={5} style={{ textAlign: 'center', color: 'var(--gray-400)', padding: 24 }}>Nenhuma nota registrada ainda. Faça a leitura de um QR Code acima.</td></tr>
               )}
               {scans.map((nota) => (
                 <tr key={nota.id}>
                   <td>{new Date(nota.dataHora).toLocaleString('pt-BR')}</td>
                   <td style={{ fontFamily: 'monospace' }}>{nota.chaveAcesso}</td>
                   <td style={{ fontFamily: 'monospace' }}>{formatarCnpj(nota.chaveAcesso)}</td>
+                  <td>{nota.registradoPor ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><User size={13} color="var(--gray-400)" /> {nota.registradoPor}</span> : '—'}</td>
                   <td><span className="badge badge-green">Enviada</span></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* ── Relatórios .txt gerados ───────────────────────────── */}
+      <div className="card" style={{ marginTop: 24 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+          <FileText size={16} />
+          <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 16 }}>Relatórios gerados</div>
+          <span style={{ fontSize: 12, color: 'var(--gray-400)' }}>Arquivos .txt de lote guardados no sistema — baixe novamente ou exclua quando quiser</span>
+        </div>
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Gerado em</th>
+                <th>Arquivo</th>
+                <th>Notas no lote</th>
+                <th>Gerado por</th>
+                <th style={{ textAlign: 'right' }}>Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              {lotes.length === 0 && (
+                <tr><td colSpan={5} style={{ textAlign: 'center', color: 'var(--gray-400)', padding: 24 }}>Nenhum relatório gerado ainda. Use o botão “Gerar .txt” acima.</td></tr>
+              )}
+              {lotes.map((lote) => (
+                <tr key={lote.id}>
+                  <td>{new Date(lote.geradoEm).toLocaleString('pt-BR')}</td>
+                  <td style={{ fontFamily: 'monospace' }}>{lote.nomeArquivo}</td>
+                  <td>{lote.totalNotas}</td>
+                  <td><span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><User size={13} color="var(--gray-400)" /> {lote.geradoPor}</span></td>
+                  <td style={{ textAlign: 'right' }}>
+                    <div style={{ display: 'inline-flex', gap: 6 }}>
+                      <button className="btn btn-outline" onClick={() => baixarConteudo(lote.conteudo, lote.nomeArquivo)}><FileDown size={14} /> Baixar</button>
+                      <button className="btn btn-outline" style={{ color: 'var(--red-600)' }} onClick={() => excluirLote(lote)}><Trash2 size={14} /> Excluir</button>
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
