@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import NfpService from '../../services/NfpService'
-import { QrCode, Hand, Landmark, Send, Trash2, CheckCircle2, MonitorCheck, Power, Volume2, FileDown, FileText, User } from 'lucide-react'
+import { QrCode, Hand, Landmark, Send, Trash2, CheckCircle2, MonitorCheck, Power, Volume2, FileDown, FileText, User, Copy, Undo2, ClipboardCheck, AlertTriangle, Info } from 'lucide-react'
 import { getUsuarioSessao } from '../../services/authPermissions'
 import { loadInstitucional } from '../institucional/institucionalStorage'
 
@@ -63,6 +63,44 @@ function parseNotaQr(raw) {
     codigo: chaveAcesso,
     enviado: true,
     dataHora: new Date().toISOString(),
+  }
+}
+
+/*
+  Prazo da NFP: documentos sem CPF podem ser lançados no sistema da
+  Nota Fiscal Paulista até o dia 20 do mês SUBSEQUENTE à emissão.
+  A chave de acesso traz o ano/mês de emissão nas posições 3-6 (AAMM),
+  então o prazo é calculado da própria chave.
+*/
+function prazoDaNota(chave = '') {
+  const ano = Number(String(chave).slice(2, 4))
+  const mes = Number(String(chave).slice(4, 6))
+  if (!ano || !mes || mes < 1 || mes > 12) return null
+  // monthIndex é 0-based: passar "mes" já resulta no mês seguinte
+  return new Date(2000 + ano, mes, 20, 23, 59, 59)
+}
+
+function diasParaPrazo(prazo) {
+  if (!prazo) return null
+  return Math.ceil((prazo.getTime() - Date.now()) / 86400000)
+}
+
+async function copiarTexto(texto) {
+  try {
+    await navigator.clipboard.writeText(texto)
+    return true
+  } catch {
+    // Fallback para contextos sem Clipboard API (ex.: HTTP sem TLS)
+    const area = document.createElement('textarea')
+    area.value = texto
+    area.style.position = 'fixed'
+    area.style.opacity = '0'
+    document.body.appendChild(area)
+    area.select()
+    let ok = false
+    try { ok = document.execCommand('copy') } catch { ok = false }
+    document.body.removeChild(area)
+    return ok
   }
 }
 
@@ -152,6 +190,9 @@ export default function NotasPaulista() {
       id: `${Date.now()}-${parsed.chaveAcesso.slice(-6)}`,
       registradoPor: usuarioAtual?.nome || 'Usuário',
       registradoPorId: usuarioAtual?.id || '',
+      lancamento: 'PENDENTE',
+      lancadaPor: '',
+      lancadaEm: '',
     }
     const next = [novaNota, ...scansRef.current]
     scansRef.current = next
@@ -277,6 +318,52 @@ export default function NotasPaulista() {
     })
   }
 
+  const persistScans = (next) => {
+    scansRef.current = next
+    setScans(next)
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
+  }
+
+  const [avisoAcao, setAvisoAcao] = useState('')
+
+  const marcarLancada = (nota) => {
+    persistScans(scansRef.current.map((s) => (s.id === nota.id
+      ? { ...s, lancamento: 'LANCADA', lancadaPor: usuarioAtual?.nome || 'Usuário', lancadaEm: new Date().toISOString() }
+      : s)))
+  }
+
+  const desfazerLancamento = (nota) => {
+    persistScans(scansRef.current.map((s) => (s.id === nota.id
+      ? { ...s, lancamento: 'PENDENTE', lancadaPor: '', lancadaEm: '' }
+      : s)))
+  }
+
+  const marcarPendentesComoLancadas = () => {
+    const pendentes = scansRef.current.filter((s) => s.lancamento !== 'LANCADA')
+    if (!pendentes.length) return
+    const confirmado = window.confirm(`Marcar ${pendentes.length} nota(s) pendente(s) como lançadas no sistema da NFP? Use após concluir o lançamento no portal.`)
+    if (!confirmado) return
+    const agora = new Date().toISOString()
+    persistScans(scansRef.current.map((s) => (s.lancamento !== 'LANCADA'
+      ? { ...s, lancamento: 'LANCADA', lancadaPor: usuarioAtual?.nome || 'Usuário', lancadaEm: agora }
+      : s)))
+  }
+
+  const copiarChave = async (nota) => {
+    const ok = await copiarTexto(nota.chaveAcesso)
+    setAvisoAcao(ok ? `Chave …${nota.chaveAcesso.slice(-8)} copiada. Cole no portal da NFP.` : 'Não foi possível copiar. Copie manualmente da tabela.')
+  }
+
+  const copiarChavesPendentes = async () => {
+    const pendentes = scansRef.current.filter((s) => s.lancamento !== 'LANCADA')
+    if (!pendentes.length) {
+      setAvisoAcao('Nenhuma nota pendente de lançamento.')
+      return
+    }
+    const ok = await copiarTexto(pendentes.map((s) => s.chaveAcesso).join('\n'))
+    setAvisoAcao(ok ? `${pendentes.length} chave(s) pendente(s) copiada(s), uma por linha.` : 'Não foi possível copiar. Copie manualmente da tabela.')
+  }
+
   const removerTudo = () => {
     const confirmado = window.confirm(`Remover todas as ${scans.length} notas registradas? Esta ação não pode ser desfeita.`)
     if (!confirmado) return
@@ -364,9 +451,15 @@ export default function NotasPaulista() {
 
   const resumo = useMemo(() => {
     const total = scans.length
-    const enviadas = scans.filter((s) => s.enviado).length
+    const lancadas = scans.filter((s) => s.lancamento === 'LANCADA').length
+    const pendentes = total - lancadas
     const hoje = scans.filter((s) => ehDeHoje(s.dataHora)).length
-    return { total, enviadas, hoje }
+    const vencendo = scans.filter((s) => {
+      if (s.lancamento === 'LANCADA') return false
+      const dias = diasParaPrazo(prazoDaNota(s.chaveAcesso))
+      return dias !== null && dias <= 5
+    }).length
+    return { total, lancadas, pendentes, hoje, vencendo }
   }, [scans])
 
   return (
@@ -380,19 +473,28 @@ export default function NotasPaulista() {
         </div>
       </div>
 
-      <div className="grid-3" style={{ marginBottom: 24 }}>
+      <div className="grid-4" style={{ marginBottom: 24 }}>
         <div className="stat-card mod-financeiro">
           <div className="stat-icon"><QrCode size={20} /></div>
           <div><div className="stat-label">Notas escaneadas</div><div className="stat-value">{resumo.total}</div></div>
-        </div>
-        <div className="stat-card mod-dashboard">
-          <div className="stat-icon"><Landmark size={20} /></div>
-          <div><div className="stat-label">Enviadas ao sistema</div><div className="stat-value">{resumo.enviadas}</div></div>
         </div>
         <div className="stat-card mod-projetos">
           <div className="stat-icon"><Send size={20} /></div>
           <div><div className="stat-label">Registradas hoje</div><div className="stat-value">{resumo.hoje}</div></div>
         </div>
+        <div className="stat-card mod-captacao">
+          <div className="stat-icon"><AlertTriangle size={20} /></div>
+          <div><div className="stat-label">Pendentes de lançamento</div><div className="stat-value">{resumo.pendentes}{resumo.vencendo > 0 && <span style={{ fontSize: 12, color: 'var(--red-600)', marginLeft: 8 }}>{resumo.vencendo} perto do prazo</span>}</div></div>
+        </div>
+        <div className="stat-card mod-dashboard">
+          <div className="stat-icon"><Landmark size={20} /></div>
+          <div><div className="stat-label">Lançadas na NFP</div><div className="stat-value">{resumo.lancadas}</div></div>
+        </div>
+      </div>
+
+      <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', color: '#1d4ed8', borderRadius: 10, padding: '10px 14px', marginBottom: 16, fontSize: 13, display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+        <Info size={15} style={{ flexShrink: 0, marginTop: 1 }} />
+        <span>O lançamento oficial é feito no <strong>portal da Nota Fiscal Paulista</strong> (nfp.fazenda.sp.gov.br) pelos <strong>usuários cadastradores</strong> da entidade, com CPF e senha próprios, colando a chave de acesso de cada nota. <strong>Prazo: dia 20 do mês seguinte à emissão.</strong> Use “Copiar chaves pendentes”, lance no portal e depois marque as notas como lançadas aqui.</span>
       </div>
 
       {/* ── Scanner de mesa (mãos livres) ─────────────────────── */}
@@ -447,8 +549,13 @@ export default function NotasPaulista() {
           />
           <button className="btn btn-primary" onClick={() => { garantirAudio(); const r = registrarRef.current(); if (r === 'ok') tocarBeep('ok') }}>Registrar</button>
           <button className="btn btn-outline" onClick={removerTudo}><Trash2 size={15} /> Limpar</button>
-          <button className="btn btn-primary" onClick={gerarLoteTxt}>Gerar .txt</button>
         </div>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
+          <button className="btn btn-outline" onClick={copiarChavesPendentes}><Copy size={14} /> Copiar chaves pendentes ({resumo.pendentes})</button>
+          <button className="btn btn-outline" onClick={marcarPendentesComoLancadas} disabled={!resumo.pendentes}><ClipboardCheck size={14} /> Marcar pendentes como lançadas</button>
+          <button className="btn btn-outline" onClick={gerarLoteTxt}><FileText size={14} /> Relatório .txt (controle interno)</button>
+        </div>
+        {avisoAcao && <div style={{ marginTop: 10, color: 'var(--gray-500)', fontSize: 13 }}>{avisoAcao}</div>}
         {erro && <div style={{ marginTop: 10, color: 'var(--red-600)', fontSize: 13 }}>{erro}</div>}
         {!erro && ultimaRegistrada && (
           <div style={{ marginTop: 10, color: 'var(--green-600, #16a34a)', fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -467,22 +574,54 @@ export default function NotasPaulista() {
                 <th>Chave de acesso</th>
                 <th>CNPJ do emitente</th>
                 <th>Registrada por</th>
-                <th>Status envio</th>
+                <th>Prazo NFP</th>
+                <th>Lançamento</th>
+                <th>Ações</th>
               </tr>
             </thead>
             <tbody>
               {scans.length === 0 && (
-                <tr><td colSpan={5} style={{ textAlign: 'center', color: 'var(--gray-400)', padding: 24 }}>Nenhuma nota registrada ainda. Faça a leitura de um QR Code acima.</td></tr>
+                <tr><td colSpan={7} style={{ textAlign: 'center', color: 'var(--gray-400)', padding: 24 }}>Nenhuma nota registrada ainda. Faça a leitura de um QR Code acima.</td></tr>
               )}
-              {scans.map((nota) => (
-                <tr key={nota.id}>
-                  <td>{new Date(nota.dataHora).toLocaleString('pt-BR')}</td>
-                  <td style={{ fontFamily: 'monospace' }}>{nota.chaveAcesso}</td>
-                  <td style={{ fontFamily: 'monospace' }}>{formatarCnpj(nota.chaveAcesso)}</td>
-                  <td>{nota.registradoPor ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><User size={13} color="var(--gray-400)" /> {nota.registradoPor}</span> : '—'}</td>
-                  <td><span className="badge badge-green">Enviada</span></td>
-                </tr>
-              ))}
+              {scans.map((nota) => {
+                const lancada = nota.lancamento === 'LANCADA'
+                const prazo = prazoDaNota(nota.chaveAcesso)
+                const dias = diasParaPrazo(prazo)
+                let prazoBadge = null
+                if (lancada) {
+                  prazoBadge = <span style={{ color: 'var(--gray-300)' }}>—</span>
+                } else if (!prazo) {
+                  prazoBadge = <span style={{ color: 'var(--gray-400)', fontSize: 12 }}>Não identificado</span>
+                } else if (dias < 0) {
+                  prazoBadge = <span className="badge badge-red"><AlertTriangle size={11} /> Vencido em {prazo.toLocaleDateString('pt-BR')}</span>
+                } else if (dias <= 5) {
+                  prazoBadge = <span className="badge badge-yellow"><AlertTriangle size={11} /> Vence em {dias === 0 ? 'hoje' : `${dias} dia${dias > 1 ? 's' : ''}`}</span>
+                } else {
+                  prazoBadge = <span style={{ fontSize: 12, color: 'var(--gray-500)' }}>Até {prazo.toLocaleDateString('pt-BR')}</span>
+                }
+                return (
+                  <tr key={nota.id}>
+                    <td>{new Date(nota.dataHora).toLocaleString('pt-BR')}</td>
+                    <td style={{ fontFamily: 'monospace' }}>{nota.chaveAcesso}</td>
+                    <td style={{ fontFamily: 'monospace' }}>{formatarCnpj(nota.chaveAcesso)}</td>
+                    <td>{nota.registradoPor ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><User size={13} color="var(--gray-400)" /> {nota.registradoPor}</span> : '—'}</td>
+                    <td>{prazoBadge}</td>
+                    <td>
+                      {lancada
+                        ? <span className="badge badge-green" title={nota.lancadaEm ? `Por ${nota.lancadaPor} em ${new Date(nota.lancadaEm).toLocaleString('pt-BR')}` : undefined}><CheckCircle2 size={11} /> Lançada{nota.lancadaPor ? ` · ${nota.lancadaPor}` : ''}</span>
+                        : <span className="badge badge-yellow">Pendente</span>}
+                    </td>
+                    <td>
+                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                        <button className="btn btn-sm btn-outline" onClick={() => copiarChave(nota)}><Copy size={13} /> Copiar</button>
+                        {lancada
+                          ? <button className="btn btn-sm btn-outline" onClick={() => desfazerLancamento(nota)}><Undo2 size={13} /> Desfazer</button>
+                          : <button className="btn btn-sm btn-primary" onClick={() => marcarLancada(nota)}><ClipboardCheck size={13} /> Lançada</button>}
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         </div>
@@ -493,7 +632,7 @@ export default function NotasPaulista() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
           <FileText size={16} />
           <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 16 }}>Relatórios gerados</div>
-          <span style={{ fontSize: 12, color: 'var(--gray-400)' }}>Arquivos .txt de lote guardados no sistema — baixe novamente ou exclua quando quiser</span>
+          <span style={{ fontSize: 12, color: 'var(--gray-400)' }}>Relatórios .txt de controle interno/auditoria — o lançamento oficial é feito no portal da NFP</span>
         </div>
         <div className="table-wrap">
           <table>
