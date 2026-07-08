@@ -241,8 +241,16 @@ const upload = multer({ storage, limits: { fileSize: MAX_FILE_SIZE } })
 const uploadDocumentoCentral = multer({ storage: documentosStorage, limits: { fileSize: MAX_FILE_SIZE } })
 
 const app = express()
-app.use(cors())
-app.use(express.json({ limit: '10mb' }))
+
+// Em produção a API só é acessada pelo Nginx (mesma origem), então CORS
+// aberto é desnecessário e perigoso. Habilite apenas se precisar acessar
+// a API de outra origem, definindo CORS_ORIGIN (ex.: http://localhost:5173).
+if (process.env.CORS_ORIGIN) {
+  app.use(cors({ origin: process.env.CORS_ORIGIN.split(',').map((o) => o.trim()) }))
+}
+
+// 25mb: o módulo Institucional grava a logo como data URL dentro do JSON.
+app.use(express.json({ limit: '25mb' }))
 
 app.get('/api/health', (_req, res) => {
   res.json({ ok: true, service: 'ong-platform-backend' })

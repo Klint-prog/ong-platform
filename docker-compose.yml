@@ -16,11 +16,15 @@ services:
     ports:
       - "${FRONTEND_PORT:-8977}:80"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     networks:
       - ong_net
 
   # ── 2. Backend/API (Node + Express) ───────────────────
+  #  Sem "ports": a API só é alcançável pela rede interna,
+  #  via proxy do Nginx (/api). Não exponha esta porta ao host —
+  #  a API não tem autenticação própria.
   backend:
     build:
       context: ./backend
@@ -35,13 +39,17 @@ services:
       DB_PASSWORD: ${DB_PASSWORD:-ong123}
       MAX_FILE_SIZE: ${MAX_FILE_SIZE:-52428800}
       UPLOAD_DIR: /app/uploads
-    ports:
-      - "${BACKEND_PORT:-3498}:3498"
     volumes:
       - uploads_data:/app/uploads
     depends_on:
       db:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3498/api/health >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
     networks:
       - ong_net
 

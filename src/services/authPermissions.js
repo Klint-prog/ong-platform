@@ -266,14 +266,52 @@ export function excluirUsuario(id) {
   return next
 }
 
-export function autenticarUsuario(email, senha) {
+/* ── Hash de senha ──────────────────────────────────────────
+   As senhas nunca mais são gravadas em texto puro. O formato é
+   "sha256$<salt>$<hash-hex>". Senhas antigas em texto puro são
+   migradas automaticamente para hash no primeiro login válido. */
+
+const HASH_PREFIX = 'sha256$'
+
+function gerarSalt() {
+  const bytes = new Uint8Array(16)
+  crypto.getRandomValues(bytes)
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('')
+}
+
+async function sha256Hex(texto) {
+  const data = new TextEncoder().encode(texto)
+  const digest = await crypto.subtle.digest('SHA-256', data)
+  return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0')).join('')
+}
+
+export async function hashSenha(senha, salt = gerarSalt()) {
+  const hash = await sha256Hex(`${salt}:${String(senha || '')}`)
+  return `${HASH_PREFIX}${salt}$${hash}`
+}
+
+export async function verificarSenha(senhaDigitada, senhaArmazenada) {
+  const armazenada = String(senhaArmazenada || '')
+  if (!armazenada.startsWith(HASH_PREFIX)) {
+    // Legado: senha em texto puro
+    return { valida: armazenada === String(senhaDigitada || ''), precisaMigrar: armazenada === String(senhaDigitada || '') }
+  }
+  const [, salt] = armazenada.split('$')
+  const recalculada = await hashSenha(senhaDigitada, salt)
+  return { valida: recalculada === armazenada, precisaMigrar: false }
+}
+
+export async function autenticarUsuario(email, senha) {
   const usuarios = listarUsuarios()
   const usuario = usuarios.find((item) => normalizarEmail(item.email) === normalizarEmail(email))
   if (!usuario) return { ok: false, erro: 'Usuário não encontrado.' }
   if (!usuario.ativo) return { ok: false, erro: 'Usuário inativo. Fale com um administrador.' }
-  if (String(usuario.senha || '') !== String(senha || '')) return { ok: false, erro: 'Senha incorreta.' }
 
-  const atualizado = { ...usuario, ultimoAcesso: new Date().toISOString() }
+  const { valida, precisaMigrar } = await verificarSenha(senha, usuario.senha)
+  if (!valida) return { ok: false, erro: 'Senha incorreta.' }
+
+  const senhaFinal = precisaMigrar ? await hashSenha(senha) : usuario.senha
+  const atualizado = { ...usuario, senha: senhaFinal, ultimoAcesso: new Date().toISOString() }
   salvarUsuarios(usuarios.map((item) => String(item.id) === String(usuario.id) ? atualizado : item))
 
   const sessao = removerSenha(atualizado)

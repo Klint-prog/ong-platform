@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom'
 import Sidebar from './components/layout/Sidebar'
 import Dashboard from './pages/dashboard/Dashboard'
@@ -62,6 +62,13 @@ function ProtectedRoute({ user, children }) {
 function AppShell({ user, onLogout, onUserUpdate }) {
   const navigate = useNavigate()
   const [menuAberto, setMenuAberto] = useState(false)
+  const [storageOffline, setStorageOffline] = useState(false)
+
+  useEffect(() => {
+    const marcarOffline = () => setStorageOffline(true)
+    window.addEventListener('ong:storage-offline', marcarOffline)
+    return () => window.removeEventListener('ong:storage-offline', marcarOffline)
+  }, [])
   const [sidebarRecolhida, setSidebarRecolhida] = useState(() => carregarSidebarRecolhida())
   const [perfilDraft, setPerfilDraft] = useState(() => ({
     nome: user?.nome || '',
@@ -129,6 +136,13 @@ function AppShell({ user, onLogout, onUserUpdate }) {
       </header>
 
       <main className="app-main">
+        {storageOffline && (
+          <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', borderRadius: 10, padding: '10px 14px', marginBottom: 16, fontSize: 13, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <ShieldAlert size={15} />
+            <span><strong>Atenção:</strong> o servidor de dados está inacessível. Alterações feitas agora podem ser perdidas ao fechar o navegador. Verifique se os containers <code>ong-backend</code> e <code>ong-postgres</code> estão no ar.</span>
+            <button className="btn btn-ghost" style={{ marginLeft: 'auto', fontSize: 12 }} onClick={() => setStorageOffline(false)}>Dispensar</button>
+          </div>
+        )}
         <Routes>
           <Route path="/" element={<ProtectedRoute user={user}><Dashboard /></ProtectedRoute>} />
           <Route path="/institucional" element={<ProtectedRoute user={user}><Institucional /></ProtectedRoute>} />

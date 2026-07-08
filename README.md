@@ -61,14 +61,21 @@ Uma plataforma profissional, open source e gratuita que qualquer organização p
 
 ## 🎨 Módulos
 
-| Módulo | Cor | O que faz |
-|---|---|---|
-| 📊 **Dashboard** | Azul | Indicadores, fluxo financeiro, atividades e tarefas pendentes |
-| 🩷 **Pessoas** | Rosa | Membros, voluntários, beneficiários, doadores e horas voluntariadas |
-| 💚 **Financeiro** | Verde | Receitas, despesas, doações, relatórios e gráficos por origem |
-| 💛 **Projetos** | Amarelo | Projetos com tarefas, progresso, orçamento e indicadores de impacto |
-| 💜 **Comunicação** | Lilás | Notificações, templates de e-mail e logs de envio |
-| 🟣 **Usuários** | Roxo | Controle de acesso com 4 papéis via RBAC |
+| Módulo | O que faz |
+|---|---|
+| 📊 **Dashboard** | Indicadores, fluxo financeiro, atividades e tarefas pendentes |
+| 🏛️ **Institucional** | Dados oficiais da ONG, diretoria, logo e documentos críticos (com upload e pré-visualização) |
+| 💛 **Projetos** | Projetos com tarefas, progresso, orçamento e indicadores de impacto |
+| 🧡 **Beneficiários** | Famílias, pessoas atendidas e termos LGPD |
+| 🩷 **Pessoas** | Membros, voluntários, doadores e equipe |
+| 📁 **Documentos** | Central de documentos e evidências, com conversão de pré-visualização via LibreOffice |
+| 💚 **Financeiro** | Receitas, despesas, contas, orçamento, comprovantes e gráficos |
+| 🤝 **Captação** | Editais, oportunidades e propostas |
+| 📈 **Relatórios** | Relatórios gerenciais, impacto e prestação de contas |
+| 🧾 **Notas Paulista** | Registro automático de NFC-e com scanner de mão (QR Code) e geração de lote .txt |
+| 💜 **Comunicação** | Notificações, templates de e-mail e logs de envio |
+| 🟣 **Usuários** | Controle de acesso com 7 papéis via RBAC |
+| ⚙️ **Configurações** | Parâmetros gerais da plataforma |
 
 ---
 
@@ -118,19 +125,28 @@ Browser
 │   ong-frontend      │
 │   React + Nginx     │  ← build multi-stage (node → nginx:alpine)
 └─────────────────────┘
-         │ rede interna ong_net
+         │ proxy /api (rede interna ong_net)
+         ▼
+┌─────────────────────┐
+│   ong-backend       │
+│   Node + Express    │  ← API de storage, documentos e conversão
+│   porta interna 3498│     de pré-visualizações (LibreOffice)
+└─────────────────────┘
+         │
          ▼
 ┌─────────────────────┐
 │   ong-postgres      │
 │   PostgreSQL 16     │  ← dados persistidos em volume Docker
-│   porta 5433        │
 └─────────────────────┘
 ```
 
-| Container | Imagem | Porta |
+| Container | Imagem | Porta exposta no host |
 |---|---|---|
 | `ong-frontend` | `nginx:1.27-alpine` | `8977` |
-| `ong-postgres` | `postgres:16-alpine` | `5433` |
+| `ong-backend` | `node:20-alpine` | — (apenas rede interna, via proxy do Nginx) |
+| `ong-postgres` | `postgres:16-alpine` | `5433` (interna: 5432) |
+
+> ⚠️ **Segurança:** a API do backend ainda não possui autenticação própria — por isso ela **não** é exposta ao host e só responde através do Nginx. Não adicione um mapeamento de porta ao serviço `backend` em ambientes acessíveis pela internet.
 
 ---
 
@@ -155,30 +171,35 @@ POSTGRES_PORT=5433
 
 ```
 ong-platform/
-├── src/
-│   ├── components/
-│   │   └── layout/
-│   │       └── Sidebar.jsx        # Navegação lateral
+├── src/                           # Frontend (React + Vite)
+│   ├── components/layout/         # Sidebar e navegação
 │   ├── pages/
-│   │   ├── auth/                  # Login
+│   │   ├── auth/                  # Login (RBAC)
 │   │   ├── dashboard/             # Dashboard principal
-│   │   ├── pessoas/               # Gestão de pessoas
-│   │   ├── financeiro/            # Controle financeiro
+│   │   ├── institucional/         # Dados da ONG e documentos críticos
 │   │   ├── projetos/              # Gestão de projetos
+│   │   ├── beneficiarios/         # Beneficiários e termos LGPD
+│   │   ├── pessoas/               # Gestão de pessoas
+│   │   ├── documentos/            # Central de documentos
+│   │   ├── financeiro/            # Controle financeiro
+│   │   ├── captacao/              # Editais e oportunidades
+│   │   ├── relatorios/            # Relatórios gerenciais
+│   │   ├── notas/                 # Nota Fiscal Paulista (scanner QR)
 │   │   ├── comunicacao/           # Notificações e e-mails
-│   │   └── usuarios/              # Controle de acesso
-│   └── styles/
-│       ├── tokens.css             # Design system — paleta de cores por módulo
-│       └── global.css             # Componentes e layout
+│   │   ├── usuarios/              # Controle de acesso
+│   │   ├── cadastros/             # Formulários compartilhados
+│   │   └── configuracoes/         # Configurações gerais
+│   ├── services/                  # Autenticação/RBAC e storage↔PostgreSQL
+│   └── styles/                    # Design system e CSS
+├── backend/                       # API (Node + Express)
+│   └── src/server.js              # Storage chave-valor, documentos e previews
 ├── screenshots/                   # Prints da interface
-├── Dockerfile                     # Build multi-stage (builder + prod)
-├── docker-compose.yml             # Orquestração dos containers
-├── nginx.conf                     # Config do Nginx (SPA + gzip + cache)
-├── .dockerignore                  # Exclui node_modules do contexto de build
+├── Dockerfile                     # Build multi-stage do frontend
+├── docker-compose.yml             # Orquestração: frontend + backend + db
+├── nginx.conf                     # Nginx (SPA + proxy /api + gzip + cache)
 ├── .env.example                   # Modelo de variáveis de ambiente
-├── index.html                     # Entry point do Vite
-├── vite.config.js                 # Config do Vite
-└── package.json                   # Dependências do projeto
+├── vite.config.js                 # Config do Vite (proxy de dev na porta 3498)
+└── package.json                   # Dependências do frontend
 ```
 
 ---
@@ -187,10 +208,15 @@ ong-platform/
 
 | Papel | Permissões |
 |---|---|
-| `ADMIN` | Acesso total — gerencia usuários, configurações e todos os módulos |
-| `COORDENADOR` | Cria e edita projetos, pessoas e transações |
-| `VOLUNTARIO` | Registra horas e visualiza projetos |
-| `VISUALIZADOR` | Somente leitura em todos os módulos |
+| `ADMIN` | Acesso total — usuários, configurações, exclusões e validações em todos os módulos |
+| `DIRETORIA` | Gestão institucional, projetos, captação, relatórios e aprovações estratégicas |
+| `FINANCEIRO` | Operação financeira, comprovantes, prestação de contas, notas e relatórios financeiros |
+| `COORDENADOR` | Gestão operacional de projetos, beneficiários, pessoas, documentos e comunicação básica |
+| `CONSELHO` | Conselho fiscal — leitura, validação e exportação de documentos, financeiro e relatórios |
+| `OPERADOR` | Operação cotidiana com criação e edição limitada, sem exclusões nem administração |
+| `VISUALIZADOR` | Somente leitura nos módulos liberados |
+
+> 🔑 A conta inicial é `admin@suaong.org` / `admin123456`. **Troque a senha no primeiro acesso.** As senhas são armazenadas com hash (SHA-256 + salt); contas antigas em texto puro são migradas automaticamente no primeiro login.
 
 ---
 
@@ -209,15 +235,22 @@ A plataforma roda em qualquer serviço que suporte Docker:
 
 ## 🛠️ Desenvolvimento local (sem Docker)
 
-```bash
-# Instala dependências
-npm install
+O frontend precisa do backend e do PostgreSQL para persistir dados. Suba-os com Docker e rode só o frontend localmente:
 
-# Inicia o servidor de desenvolvimento
+```bash
+# 1. Sobe apenas banco e API (a API fica interna; exponha só em dev se precisar)
+docker compose up -d db backend
+
+# 2. Instala dependências e inicia o Vite (proxy /api → backend na porta 3498)
+npm ci
 npm run dev
 
 # Acesse: http://localhost:5173
 ```
+
+> 💡 O proxy de desenvolvimento do Vite espera o backend em `http://localhost:3498`.
+> Para o Vite alcançar o backend do Docker em dev, adicione temporariamente
+> `ports: ["3498:3498"]` ao serviço `backend` — e remova antes de ir para produção.
 
 ---
 
@@ -233,8 +266,8 @@ Contribuições são muito bem-vindas! Este é um projeto para a comunidade.
 
 ### Roadmap
 
-- [ ] Backend com API REST (Node.js + Fastify)
-- [ ] Autenticação real com JWT
+- [x] Backend com API REST (Node.js + Express)
+- [ ] Autenticação real com JWT no backend (hoje o RBAC roda no cliente)
 - [ ] Integração com PIX para doações
 - [ ] Relatórios exportáveis em PDF
 - [ ] Modo escuro

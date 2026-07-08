@@ -9,7 +9,7 @@ RUN apk add --no-cache \
     ttf-liberation
 
 COPY package*.json ./
-RUN npm install --omit=dev --fetch-retries=5 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000
+RUN npm ci --omit=dev --fetch-retries=5 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000
 
 COPY src ./src
 

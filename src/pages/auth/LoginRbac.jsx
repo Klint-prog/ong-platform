@@ -11,7 +11,7 @@ export default function LoginRbac({ onLogin }) {
     event.preventDefault()
     setLoading(true)
     setErro('')
-    const resultado = autenticarUsuario(form.email, form.senha)
+    const resultado = await autenticarUsuario(form.email, form.senha)
     setLoading(false)
     if (!resultado.ok) return setErro(resultado.erro)
     onLogin?.(resultado.usuario)
